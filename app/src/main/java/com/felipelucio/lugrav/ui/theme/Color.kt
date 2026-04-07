@@ -1,6 +1,12 @@
-package com.example.projteste.ui.theme
+package com.felipelucio.lugrav.ui.theme
 
 import androidx.compose.ui.graphics.Color
+
+val SkyBlue = Color(0xFF29B6F6)
+val SkyBlueDark = Color(0xFF0D47A1)
+val SurfaceColor = Color(0xFFFFFBFE)
+val ErrorColor = Color(0xFFB3261E)
+val OnPrimary = Color(0xFFFFFFFF)
 
 val Purple80 = Color(0xFFD0BCFF)
 val PurpleGrey80 = Color(0xFFCCC2DC)

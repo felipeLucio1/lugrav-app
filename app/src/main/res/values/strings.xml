@@ -1,3 +1,14 @@
 <resources>
-    <string name="app_name">ProjTeste</string>
+    <string name="app_name">Lugrav</string>
+    <string name="app_title">Lugrav</string>
+    <string name="record_button">Gravar</string>
+    <string name="stop_button">Parar gravação</string>
+    <string name="play_button">Reproduzir gravação</string>
+    <string name="recording_in_progress">Gravação em andamento</string>
+    <string name="recording_saved">Gravação salva com sucesso</string>
+    <string name="recording_error">Erro ao salvar gravação</string>
+    <string name="permission_denied">Permissão de microfone não concedida. Não é possível gravar.</string>
+    <string name="permission_microphone_rationale">O microfone é necessário para gravar áudios.</string>
+    <string name="time_format">%02d:%02d:%02d</string>
+    <string name="recordings_not_found">Nenhuma gravação encontrada</string>
 </resources>
