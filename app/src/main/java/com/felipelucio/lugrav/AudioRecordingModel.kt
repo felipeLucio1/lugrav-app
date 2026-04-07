@@ -1,4 +1,4 @@
-package com.example.projteste
+package com.felipelucio.lugrav
 
 data class AudioRecordingModel(
     val path: String,

@@ -1,7 +1,7 @@
-package com.example.projteste.di
+package com.felipelucio.lugrav.di
 
-import com.example.projteste.AudioRecordingRepository
-import com.example.projteste.AudioRecordingViewModel
+import com.felipelucio.lugrav.AudioRecordingRepository
+import com.felipelucio.lugrav.AudioRecordingViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module

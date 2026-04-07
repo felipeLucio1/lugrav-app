@@ -1,7 +1,7 @@
-package com.example.projteste
+package com.felipelucio.lugrav
 
 import android.app.Application
-import com.example.projteste.di.appModule
+import com.felipelucio.lugrav.di.appModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin

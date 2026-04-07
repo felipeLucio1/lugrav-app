@@ -1,9 +1,7 @@
-package com.example.projteste
+package com.felipelucio.lugrav
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.projteste.AudioRecordingModel
-import com.example.projteste.AudioRecordingRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
