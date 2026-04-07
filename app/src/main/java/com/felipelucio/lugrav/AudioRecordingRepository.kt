@@ -1,4 +1,4 @@
-package com.example.projteste
+package com.felipelucio.lugrav
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
@@ -21,13 +21,12 @@ class AudioRecordingRepository(private val context: Context) {
         private const val FILE_EXTENSION = ".aac"
     }
 
-    suspend fun startRecording() {
+    fun startRecording() {
         tempFile = File(context.cacheDir, "temp_audio_${System.currentTimeMillis()}.aac")
 
         mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(context)
         } else {
-            @Suppress("DEPRECATION")
             MediaRecorder()
         }.apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -35,7 +34,7 @@ class AudioRecordingRepository(private val context: Context) {
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             setAudioSamplingRate(44100)
             setAudioEncodingBitRate(128000)
-            setAudioChannels(2) // estéreo
+            setAudioChannels(2)
             setOutputFile(tempFile?.absolutePath)
 
             prepare()
@@ -43,7 +42,7 @@ class AudioRecordingRepository(private val context: Context) {
         }
     }
 
-    suspend fun stopRecording(): ByteArray {
+    fun stopRecording(): ByteArray {
         mediaRecorder?.apply {
             stop()
             release()
@@ -60,7 +59,7 @@ class AudioRecordingRepository(private val context: Context) {
         return audioBytes
     }
 
-    suspend fun stopAndSave(): String {
+    fun stopAndSave(): String {
         val audioBytes = stopRecording()
 
         val baseDir = context.getExternalFilesDir(null)
@@ -84,7 +83,7 @@ class AudioRecordingRepository(private val context: Context) {
         return outputFile.absolutePath
     }
 
-    suspend fun getRecordingsList(): List<AudioRecordingModel> {
+    fun getRecordingsList(): List<AudioRecordingModel> {
         val baseDir = context.getExternalFilesDir(null)
         val appFolder = File(baseDir, APP_FOLDER)
 
@@ -122,6 +121,6 @@ class AudioRecordingRepository(private val context: Context) {
         val hours = totalSeconds / 3600
         val minutes = (totalSeconds % 3600) / 60
         val seconds = totalSeconds % 60
-        return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        return String.format(context.getString(R.string.time_format), hours, minutes, seconds)
     }
 }
