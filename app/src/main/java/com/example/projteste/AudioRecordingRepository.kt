@@ -1,6 +1,7 @@
 package com.example.projteste
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.media.MediaRecorder
 import android.os.Build
 import java.io.File
@@ -83,7 +84,7 @@ class AudioRecordingRepository(private val context: Context) {
         return outputFile.absolutePath
     }
 
-    suspend fun getRecordingsList(): List<String> {
+    suspend fun getRecordingsList(): List<AudioRecordingModel> {
         val baseDir = context.getExternalFilesDir(null)
         val appFolder = File(baseDir, APP_FOLDER)
 
@@ -91,8 +92,36 @@ class AudioRecordingRepository(private val context: Context) {
             return emptyList()
         }
 
-        return appFolder.listFiles { file ->
+        val files = appFolder.listFiles { file ->
             file.extension == "aac"
-        }?.map { it.absolutePath } ?: emptyList()
+        } ?: return emptyList()
+
+        return files.map { file ->
+            val duration = getAudioDuration(file.absolutePath)
+            AudioRecordingModel(
+                path = file.absolutePath,
+                duration = duration
+            )
+        }
+    }
+
+    private fun getAudioDuration(filePath: String): String {
+        return try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(filePath)
+            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            retriever.release()
+            formatDuration(durationMs)
+        } catch (e: Exception) {
+            "00:00:00"
+        }
+    }
+
+    private fun formatDuration(durationMs: Long): String {
+        val totalSeconds = durationMs / 1000
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds)
     }
 }
