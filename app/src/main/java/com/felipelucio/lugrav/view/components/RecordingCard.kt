@@ -30,12 +30,14 @@ import java.util.Locale
 fun RecordingCard(
     filePath: String,
     duration: String,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val fileName = File(filePath).nameWithoutExtension
     val dateStr = extractDateFromFileName(filePath)
     
     ElevatedCard(
+        onClick = onClick,
         modifier = modifier.fillMaxWidth()
     ) {
         Row(

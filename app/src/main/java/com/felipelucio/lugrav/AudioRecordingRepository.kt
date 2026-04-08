@@ -2,6 +2,7 @@ package com.felipelucio.lugrav
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
+import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.os.Build
 import java.io.File
@@ -14,6 +15,8 @@ class AudioRecordingRepository(private val context: Context) {
 
     private var mediaRecorder: MediaRecorder? = null
     private var tempFile: File? = null
+
+    private var mediaPlayer: MediaPlayer? = null
 
     companion object {
         private const val APP_FOLDER = "lugrav"
@@ -104,6 +107,39 @@ class AudioRecordingRepository(private val context: Context) {
         }
     }
 
+    fun playAudio(filePath: String) {
+        stopAudio()
+        mediaPlayer = MediaPlayer().apply {
+            setDataSource(filePath)
+            prepare()
+            start()
+            setOnCompletionListener {
+                mediaPlayer?.release()
+                mediaPlayer = null
+            }
+        }
+    }
+
+    fun pauseAudio() {
+        mediaPlayer?.pause()
+    }
+
+    fun resumeAudio() {
+        mediaPlayer?.start()
+    }
+
+    fun stopAudio() {
+        mediaPlayer?.apply {
+            stop()
+            release()
+        }
+        mediaPlayer = null
+    }
+
+    fun getCurrentPosition(): Int = mediaPlayer?.currentPosition ?: 0
+
+    fun getDuration(): Int = mediaPlayer?.duration ?: 0
+
     private fun getAudioDuration(filePath: String): String {
         return try {
             val retriever = MediaMetadataRetriever()
@@ -121,6 +157,6 @@ class AudioRecordingRepository(private val context: Context) {
         val hours = totalSeconds / 3600
         val minutes = (totalSeconds % 3600) / 60
         val seconds = totalSeconds % 60
-        return String.format(context.getString(R.string.time_format), hours, minutes, seconds)
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds)
     }
 }

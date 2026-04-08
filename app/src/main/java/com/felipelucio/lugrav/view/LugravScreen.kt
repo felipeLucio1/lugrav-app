@@ -36,6 +36,7 @@ import com.felipelucio.lugrav.AudioRecordingViewModel
 import com.felipelucio.lugrav.R
 import com.felipelucio.lugrav.view.components.LugravTopBar
 import com.felipelucio.lugrav.view.components.PermissionRationaleDialog
+import com.felipelucio.lugrav.view.components.RecordingBottomSheet
 import com.felipelucio.lugrav.view.components.RecordingCard
 import com.felipelucio.lugrav.view.components.RecordingFAB
 import com.felipelucio.lugrav.view.components.formatTime
@@ -51,6 +52,9 @@ fun LugravScreen(
     val recordingTimeSeconds by viewModel.recordingTimeSeconds.collectAsState()
     val recordingsList by viewModel.recordingsList.collectAsState()
     val recordingSuccess by viewModel.recordingSuccess.collectAsState()
+    
+    val isPlaying by viewModel.isPlaying.collectAsState()
+    val playbackTimeFormatted by viewModel.playbackTimeFormatted.collectAsState()
     
 
     fun hasRecordAudioPermission(): Boolean {
@@ -75,6 +79,8 @@ fun LugravScreen(
     }
     
     var showRationaleDialog by remember { mutableStateOf(false) }
+    
+    var selectedRecording by remember { mutableStateOf<String?>(null) }
     
     val snackbarHostState = remember { SnackbarHostState() }
     val savedMessage = stringResource(R.string.recording_saved)
@@ -116,6 +122,19 @@ fun LugravScreen(
             onOpenSettings = {
                 showRationaleDialog = false
                 openAppSettings()
+            }
+        )
+    }
+    
+    if (selectedRecording != null) {
+        RecordingBottomSheet(
+            audioTitle = java.io.File(selectedRecording!!).nameWithoutExtension,
+            isPlaying = isPlaying,
+            playbackTime = playbackTimeFormatted,
+            onPlayPauseClick = { viewModel.togglePlayPause(selectedRecording!!) },
+            onDismiss = { 
+                selectedRecording = null
+                viewModel.stopAudio()
             }
         )
     }
@@ -167,7 +186,8 @@ fun LugravScreen(
                     itemsIndexed(recordingsList) { index, recording ->
                         RecordingCard(
                             filePath = recording.path,
-                            duration = recording.duration
+                            duration = recording.duration,
+                            onClick = { selectedRecording = recording.path }
                         )
                     }
                 }
