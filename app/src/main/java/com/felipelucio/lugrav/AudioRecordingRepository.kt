@@ -107,13 +107,14 @@ class AudioRecordingRepository(private val context: Context) {
         }
     }
 
-    fun playAudio(filePath: String) {
+    fun playAudio(filePath: String, onCompletion: () -> Unit = {}) {
         stopAudio()
         mediaPlayer = MediaPlayer().apply {
             setDataSource(filePath)
             prepare()
             start()
             setOnCompletionListener {
+                onCompletion()
                 mediaPlayer?.release()
                 mediaPlayer = null
             }

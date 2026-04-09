@@ -28,6 +28,12 @@ class AudioRecordingViewModel(
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying
 
+    private val _selectedAudioPath = MutableStateFlow<String?>(null)
+    val selectedAudioPath: StateFlow<String?> = _selectedAudioPath
+
+    private val _currentPlayingPath = MutableStateFlow<String?>(null)
+    val currentPlayingPath: StateFlow<String?> = _currentPlayingPath
+
     private val _playbackTimeFormatted = MutableStateFlow("00:00:00")
     val playbackTimeFormatted: StateFlow<String> = _playbackTimeFormatted
 
@@ -74,7 +80,11 @@ class AudioRecordingViewModel(
     }
 
     fun playAudio(filePath: String) {
-        repository.playAudio(filePath)
+        _currentPlayingPath.value = filePath
+        repository.playAudio(filePath) {
+            _isPlaying.value = false
+            _currentPlayingPath.value = null
+        }
         _isPlaying.value = true
         startPositionTracking()
     }
@@ -95,13 +105,23 @@ class AudioRecordingViewModel(
         repository.stopAudio()
         _isPlaying.value = false
         _playbackTimeFormatted.value = "00:00:00"
+        _currentPlayingPath.value = null
+    }
+
+    fun clearSelectedAudio() {
+        _selectedAudioPath.value = null
     }
 
     fun togglePlayPause(filePath: String) {
+        _selectedAudioPath.value = filePath
+
         if (_isPlaying.value) {
             pauseAudio()
         } else {
-            if (repository.getCurrentPosition() > 0) {
+            val currentPos = repository.getCurrentPosition()
+            val isSameAudio = _currentPlayingPath.value == filePath
+
+            if (isSameAudio && currentPos > 0) {
                 resumeAudio()
             } else {
                 playAudio(filePath)

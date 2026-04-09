@@ -55,6 +55,8 @@ fun LugravScreen(
     
     val isPlaying by viewModel.isPlaying.collectAsState()
     val playbackTimeFormatted by viewModel.playbackTimeFormatted.collectAsState()
+    val selectedAudioPath by viewModel.selectedAudioPath.collectAsState()
+    val currentPlayingPath by viewModel.currentPlayingPath.collectAsState()
     
 
     fun hasRecordAudioPermission(): Boolean {
@@ -127,14 +129,16 @@ fun LugravScreen(
     }
     
     if (selectedRecording != null) {
+        val isCurrentAudioPlaying = isPlaying && currentPlayingPath == selectedAudioPath
         RecordingBottomSheet(
             audioTitle = java.io.File(selectedRecording!!).nameWithoutExtension,
-            isPlaying = isPlaying,
+            isPlaying = isCurrentAudioPlaying,
             playbackTime = playbackTimeFormatted,
             onPlayPauseClick = { viewModel.togglePlayPause(selectedRecording!!) },
             onDismiss = { 
                 selectedRecording = null
                 viewModel.stopAudio()
+                viewModel.clearSelectedAudio()
             }
         )
     }
