@@ -1,13 +1,9 @@
 package com.felipelucio.lugrav.view
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,13 +21,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.felipelucio.lugrav.AudioRecordingViewModel
 import com.felipelucio.lugrav.R
 import com.felipelucio.lugrav.view.components.LugravTopBar
@@ -40,7 +36,13 @@ import com.felipelucio.lugrav.view.components.RecordingBottomSheet
 import com.felipelucio.lugrav.view.components.RecordingCard
 import com.felipelucio.lugrav.view.components.RecordingFAB
 import com.felipelucio.lugrav.view.components.formatTime
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun LugravScreen(
     viewModel: AudioRecordingViewModel,
@@ -58,44 +60,18 @@ fun LugravScreen(
     val selectedAudioPath by viewModel.selectedAudioPath.collectAsState()
     val currentPlayingPath by viewModel.currentPlayingPath.collectAsState()
     
-
-    fun hasRecordAudioPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    fun shouldShowRequestPermissionRationale(): Boolean {
-        return (context as Activity).shouldShowRequestPermissionRationale(
-            Manifest.permission.RECORD_AUDIO
-        )
-    }
+    val audioPermissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
     
-    var hasAudioPermission by remember { 
-        mutableStateOf(hasRecordAudioPermission()) 
-    }
-    
-    var shouldShowRationale by remember { 
-        mutableStateOf(shouldShowRequestPermissionRationale()) 
-    }
-    
+    var hasAttemptedPermissionRequest by remember { mutableStateOf(false) }
     var showRationaleDialog by remember { mutableStateOf(false) }
     
     var selectedRecording by remember { mutableStateOf<String?>(null) }
     
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val savedMessage = stringResource(R.string.recording_saved)
     val errorMessage = stringResource(R.string.recording_error)
-    
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasAudioPermission = isGranted
-        if (isGranted) {
-            viewModel.startRecording()
-        }
-    }
+    val permissionDeniedMessage = stringResource(R.string.permission_denied)
     
     fun openAppSettings() {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -120,7 +96,12 @@ fun LugravScreen(
     
     if (showRationaleDialog) {
         PermissionRationaleDialog(
-            onDismiss = { showRationaleDialog = false },
+            onDismiss = { 
+                showRationaleDialog = false
+                scope.launch {
+                    snackbarHostState.showSnackbar(permissionDeniedMessage)
+                }
+            },
             onOpenSettings = {
                 showRationaleDialog = false
                 openAppSettings()
@@ -155,16 +136,16 @@ fun LugravScreen(
                     if (isRecording) {
                         viewModel.finalizeRecording()
                     } else {
-                        if (hasAudioPermission) {
+                        if (audioPermissionState.status.isGranted) {
                             viewModel.startRecording()
+                            hasAttemptedPermissionRequest = false
                         } else {
-                            hasAudioPermission = hasRecordAudioPermission()
-                            shouldShowRationale = shouldShowRequestPermissionRationale()
-                            
-                            if (shouldShowRationale) {
-                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                            } else {
+                            if (hasAttemptedPermissionRequest) {
                                 showRationaleDialog = true
+                                hasAttemptedPermissionRequest = false
+                            } else {
+                                audioPermissionState.launchPermissionRequest()
+                                hasAttemptedPermissionRequest = true
                             }
                         }
                     }

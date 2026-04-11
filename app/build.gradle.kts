@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     implementation(libs.material.icons.extended)
     implementation(libs.compose.ui.google.fonts)
+    implementation(libs.accompanist.permissions)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
