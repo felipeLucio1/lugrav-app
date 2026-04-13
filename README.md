@@ -50,7 +50,11 @@ O aplicativo Lugrav permite ao usuário realizar as seguintes ações:
 
 ### TODOS
 
+- **Adicionar Splash Screen**: Implementar uma tela de abertura que será exibida enquanto a lista de gravações é carregada.
+- **Atualizar o Ícone do Aplicativo**: Atualizar o ícone do aplicativo para uma versão personalizada.
 - **Compartilhamento de Gravações**: Funcionalidade futura para permitir o compartilhamento de áudios gravados com outros aplicativos ou contatos.
+
+## Melhorias
 
 - **Transcrição via IA**: Funcionalidade futura para transcrever o áudio gravado para texto utilizando inteligência artificial.
 
