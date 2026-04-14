@@ -111,6 +111,8 @@ Os principais componentes criados são:
 
 ## TODOS
 
+- **Deletar gravação**: funcionalidade para excluir gravação.
+- **Compartilhar gravação**: funcionalidade de compartilhamento de gravação para outros apps.
 - **Remover botão play do Recording Card**: A idé inicial era que o usuário clicasse no botão play para iniciar a reprodução. Entretanto, foi decidido usar o card como o botão e o fluxo contaraia com um componente de bottom sheet, responsavel visualmente pela reprodução.
 - **Adicionar Splash Screen**: Implementar uma tela de abertura que será exibida enquanto a lista de gravações é carregada.
 - **Atualizar o Ícone do Aplicativo**: Atualizar o ícone do aplicativo para uma versão personalizada.
@@ -118,4 +120,5 @@ Os principais componentes criados são:
 
 ## Melhorias
 
+- **Exibição de anúncios**: exibir anúncios para usuários na tela principal.
 - **Transcrição por IA**: Funcionalidade para transcrever o áudio gravado para texto utilizando inteligência artificial via API.
