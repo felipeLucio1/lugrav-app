@@ -1,22 +1,20 @@
 package com.felipelucio.lugrav.view.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.felipelucio.lugrav.R
@@ -26,19 +24,33 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RecordingCard(
     filePath: String,
     duration: String,
     onClick: () -> Unit,
+    onLongPress: () -> Unit = {},
+    isSelected: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val fileName = File(filePath).nameWithoutExtension
     val dateStr = extractDateFromFileName(filePath)
     
     ElevatedCard(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (isSelected) {
+                    Modifier.border(2.dp, SkyBlue, RoundedCornerShape(16.dp))
+                } else {
+                    Modifier
+                }
+            )
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongPress
+            )
     ) {
         Row(
             modifier = Modifier
@@ -47,17 +59,6 @@ fun RecordingCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            IconButton(
-                onClick = { },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = stringResource(R.string.play_button),
-                    tint = SkyBlue
-                )
-            }
-            
             Column(
                 modifier = Modifier.weight(1f)
             ) {
