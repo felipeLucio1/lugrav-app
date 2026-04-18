@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.felipelucio.lugrav.AudioRecordingViewModel
 import com.felipelucio.lugrav.R
+import com.felipelucio.lugrav.view.components.DeleteConfirmationDialog
 import com.felipelucio.lugrav.view.components.LugravTopBar
 import com.felipelucio.lugrav.view.components.PermissionRationaleDialog
 import com.felipelucio.lugrav.view.components.RecordingBottomSheet
@@ -60,6 +61,8 @@ fun LugravScreen(
     val selectedAudioPath by viewModel.selectedAudioPath.collectAsState()
     val currentPlayingPath by viewModel.currentPlayingPath.collectAsState()
     
+    val deleteResult by viewModel.deleteResult.collectAsState()
+    
     val audioPermissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
     
     var hasAttemptedPermissionRequest by remember { mutableStateOf(false) }
@@ -67,11 +70,16 @@ fun LugravScreen(
     
     var selectedRecording by remember { mutableStateOf<String?>(null) }
     
+    var isDeleteMode by remember { mutableStateOf(false) }
+    var selectedFileToDelete by remember { mutableStateOf<String?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val savedMessage = stringResource(R.string.recording_saved)
     val errorMessage = stringResource(R.string.recording_error)
     val permissionDeniedMessage = stringResource(R.string.permission_denied)
+    val deleteErrorMessage = stringResource(R.string.delete_error)
     
     fun openAppSettings() {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -94,6 +102,15 @@ fun LugravScreen(
         }
     }
     
+    LaunchedEffect(deleteResult) {
+        deleteResult?.let { result ->
+            result.onFailure {
+                snackbarHostState.showSnackbar(deleteErrorMessage)
+            }
+            viewModel.clearDeleteResult()
+        }
+    }
+    
     if (showRationaleDialog) {
         PermissionRationaleDialog(
             onDismiss = { 
@@ -110,7 +127,7 @@ fun LugravScreen(
     }
     
     if (selectedRecording != null) {
-        val isCurrentAudioPlaying = isPlaying && currentPlayingPath == selectedAudioPath
+        val isCurrentAudioPlaying = isPlaying && currentPlayingPath == selectedRecording
         RecordingBottomSheet(
             audioTitle = java.io.File(selectedRecording!!).nameWithoutExtension,
             isPlaying = isCurrentAudioPlaying,
@@ -124,9 +141,31 @@ fun LugravScreen(
         )
     }
     
+    if (showDeleteDialog && selectedFileToDelete != null) {
+        DeleteConfirmationDialog(
+            onConfirm = {
+                viewModel.deleteRecording(selectedFileToDelete!!)
+                showDeleteDialog = false
+                selectedFileToDelete = null
+                isDeleteMode = false
+            },
+            onDismiss = {
+                showDeleteDialog = false
+                selectedFileToDelete = null
+                isDeleteMode = false
+            }
+        )
+    }
+    
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { LugravTopBar() },
+        topBar = { 
+            LugravTopBar(
+                onDeleteClick = if (isDeleteMode && selectedFileToDelete != null) {
+                    { showDeleteDialog = true }
+                } else null
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             RecordingFAB(
@@ -172,7 +211,12 @@ fun LugravScreen(
                         RecordingCard(
                             filePath = recording.path,
                             duration = recording.duration,
-                            onClick = { selectedRecording = recording.path }
+                            isSelected = isDeleteMode && selectedFileToDelete == recording.path,
+                            onClick = { selectedRecording = recording.path },
+                            onLongPress = {
+                                isDeleteMode = true
+                                selectedFileToDelete = recording.path
+                            }
                         )
                     }
                 }

@@ -11,4 +11,10 @@
     <string name="permission_microphone_rationale">O microfone é necessário para gravar áudios.</string>
     <string name="time_format">%02d:%02d:%02d</string>
     <string name="recordings_not_found">Nenhuma gravação encontrada</string>
+    <string name="delete_button">Excluir gravação</string>
+    <string name="delete_recording_title">Excluir gravação?</string>
+    <string name="delete_recording_message">Deseja excluir a gravação?</string>
+    <string name="confirm_yes">Sim</string>
+    <string name="confirm_no">Não</string>
+    <string name="delete_error">Erro ao excluir gravação</string>
 </resources>

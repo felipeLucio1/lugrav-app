@@ -7,6 +7,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.Locale
 
 class AudioRecordingViewModel(
@@ -38,12 +40,34 @@ class AudioRecordingViewModel(
     val playbackTimeFormatted: StateFlow<String> = _playbackTimeFormatted
 
     private var playbackJob: Job? = null
+    private val deleteMutex = Mutex()
+
+    private val _deleteResult = MutableStateFlow<Result<Unit>?>(null)
+    val deleteResult: StateFlow<Result<Unit>?> = _deleteResult
 
     fun loadRecordings() {
         viewModelScope.launch {
             val recordings = repository.getRecordingsList()
             _recordingsList.value = recordings
         }
+    }
+
+    fun deleteRecording(filePath: String) {
+        viewModelScope.launch {
+            deleteMutex.withLock {
+                try {
+                    repository.deleteRecording(filePath)
+                    loadRecordings()
+                    _deleteResult.value = Result.success(Unit)
+                } catch (e: Exception) {
+                    _deleteResult.value = Result.failure(e)
+                }
+            }
+        }
+    }
+
+    fun clearDeleteResult() {
+        _deleteResult.value = null
     }
 
     fun startRecording() {

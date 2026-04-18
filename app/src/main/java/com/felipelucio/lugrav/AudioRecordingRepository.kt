@@ -7,6 +7,7 @@ import android.media.MediaRecorder
 import android.os.Build
 import java.io.File
 import java.io.FileInputStream
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -135,6 +136,20 @@ class AudioRecordingRepository(private val context: Context) {
             release()
         }
         mediaPlayer = null
+    }
+
+    @Throws(IOException::class)
+    fun deleteRecording(filePath: String) {
+        stopAudio()
+
+        val file = File(filePath)
+        if (!file.exists()) {
+            throw IOException("File does not exist: $filePath")
+        }
+
+        if (!file.delete()) {
+            throw IOException("Failed to delete file: $filePath")
+        }
     }
 
     fun getCurrentPosition(): Int = mediaPlayer?.currentPosition ?: 0
