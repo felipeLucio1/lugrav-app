@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import com.felipelucio.lugrav.AudioRecordingViewModel
 import com.felipelucio.lugrav.R
 import com.felipelucio.lugrav.view.components.DeleteConfirmationDialog
@@ -42,6 +43,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import kotlinx.coroutines.launch
+import java.io.File
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -70,8 +72,7 @@ fun LugravScreen(
     
     var selectedRecording by remember { mutableStateOf<String?>(null) }
     
-    var isDeleteMode by remember { mutableStateOf(false) }
-    var selectedFileToDelete by remember { mutableStateOf<String?>(null) }
+    var selectedFilePath by remember { mutableStateOf<String?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     
     val snackbarHostState = remember { SnackbarHostState() }
@@ -86,6 +87,24 @@ fun LugravScreen(
             data = Uri.fromParts("package", context.packageName, null)
         }
         context.startActivity(intent)
+    }
+    
+    fun shareRecording(filePath: String) {
+        val file = File(filePath)
+        val contentUri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "audio/aac"
+            putExtra(Intent.EXTRA_STREAM, contentUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        
+        context.startActivity(Intent.createChooser(shareIntent, null))
+        selectedFilePath = null
     }
     
     LaunchedEffect(Unit) {
@@ -141,18 +160,16 @@ fun LugravScreen(
         )
     }
     
-    if (showDeleteDialog && selectedFileToDelete != null) {
+    if (showDeleteDialog && selectedFilePath != null) {
         DeleteConfirmationDialog(
             onConfirm = {
-                viewModel.deleteRecording(selectedFileToDelete!!)
+                viewModel.deleteRecording(selectedFilePath!!)
                 showDeleteDialog = false
-                selectedFileToDelete = null
-                isDeleteMode = false
+                selectedFilePath = null
             },
             onDismiss = {
                 showDeleteDialog = false
-                selectedFileToDelete = null
-                isDeleteMode = false
+                selectedFilePath = null
             }
         )
     }
@@ -161,7 +178,10 @@ fun LugravScreen(
         modifier = modifier.fillMaxSize(),
         topBar = { 
             LugravTopBar(
-                onDeleteClick = if (isDeleteMode && selectedFileToDelete != null) {
+                onShareClick = if (selectedFilePath != null) {
+                    { shareRecording(selectedFilePath!!) }
+                } else null,
+                onDeleteClick = if (selectedFilePath != null) {
                     { showDeleteDialog = true }
                 } else null
             )
@@ -211,11 +231,16 @@ fun LugravScreen(
                         RecordingCard(
                             filePath = recording.path,
                             duration = recording.duration,
-                            isSelected = isDeleteMode && selectedFileToDelete == recording.path,
-                            onClick = { selectedRecording = recording.path },
+                            isSelected = selectedFilePath == recording.path,
+                            onClick = {
+                                if (selectedFilePath == recording.path) {
+                                    selectedFilePath = null
+                                } else {
+                                    selectedRecording = recording.path
+                                }
+                            },
                             onLongPress = {
-                                isDeleteMode = true
-                                selectedFileToDelete = recording.path
+                                selectedFilePath = recording.path
                             }
                         )
                     }
