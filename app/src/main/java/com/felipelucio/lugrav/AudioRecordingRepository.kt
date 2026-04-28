@@ -1,10 +1,9 @@
 package com.felipelucio.lugrav
 
-import android.content.Context
-import android.media.MediaMetadataRetriever
-import android.media.MediaPlayer
-import android.media.MediaRecorder
-import android.os.Build
+import com.felipelucio.lugrav.interfaces.AudioPlayer
+import com.felipelucio.lugrav.interfaces.AudioRecorder
+import com.felipelucio.lugrav.interfaces.FileProvider
+import com.felipelucio.lugrav.interfaces.MetadataRetriever
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
@@ -12,12 +11,14 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class AudioRecordingRepository(private val context: Context) {
+class AudioRecordingRepository(
+    private val fileProvider: FileProvider,
+    private val audioRecorder: AudioRecorder,
+    private val audioPlayer: AudioPlayer,
+    private val metadataRetriever: MetadataRetriever
+) {
 
-    private var mediaRecorder: MediaRecorder? = null
     private var tempFile: File? = null
-
-    private var mediaPlayer: MediaPlayer? = null
 
     companion object {
         private const val APP_FOLDER = "lugrav"
@@ -26,32 +27,24 @@ class AudioRecordingRepository(private val context: Context) {
     }
 
     fun startRecording() {
-        tempFile = File(context.cacheDir, "temp_audio_${System.currentTimeMillis()}.aac")
+        tempFile = File(fileProvider.getCacheDir(), "temp_audio_${System.currentTimeMillis()}.aac")
 
-        mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            MediaRecorder(context)
-        } else {
-            MediaRecorder()
-        }.apply {
-            setAudioSource(MediaRecorder.AudioSource.MIC)
-            setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setAudioSamplingRate(44100)
-            setAudioEncodingBitRate(128000)
-            setAudioChannels(2)
-            setOutputFile(tempFile?.absolutePath)
-
-            prepare()
-            start()
-        }
+        audioRecorder.setup(
+            audioSource = android.media.MediaRecorder.AudioSource.MIC,
+            outputFormat = android.media.MediaRecorder.OutputFormat.AAC_ADTS,
+            audioEncoder = android.media.MediaRecorder.AudioEncoder.AAC,
+            samplingRate = 44100,
+            encodingBitRate = 128000,
+            channels = 2,
+            outputFile = tempFile?.absolutePath ?: ""
+        )
+        audioRecorder.prepare()
+        audioRecorder.start()
     }
 
     fun stopRecording(): ByteArray {
-        mediaRecorder?.apply {
-            stop()
-            release()
-        }
-        mediaRecorder = null
+        audioRecorder.stop()
+        audioRecorder.release()
 
         val audioBytes = tempFile?.let { file ->
             FileInputStream(file).use { it.readBytes() }
@@ -66,7 +59,7 @@ class AudioRecordingRepository(private val context: Context) {
     fun stopAndSave(): String {
         val audioBytes = stopRecording()
 
-        val baseDir = context.getExternalFilesDir(null)
+        val baseDir = fileProvider.getExternalFilesDir()
         val appFolder = File(baseDir, APP_FOLDER)
 
         if (!appFolder.exists()) {
@@ -88,7 +81,7 @@ class AudioRecordingRepository(private val context: Context) {
     }
 
     fun getRecordingsList(): List<AudioRecordingModel> {
-        val baseDir = context.getExternalFilesDir(null)
+        val baseDir = fileProvider.getExternalFilesDir()
         val appFolder = File(baseDir, APP_FOLDER)
 
         if (!appFolder.exists()) {
@@ -109,33 +102,26 @@ class AudioRecordingRepository(private val context: Context) {
     }
 
     fun playAudio(filePath: String, onCompletion: () -> Unit = {}) {
-        stopAudio()
-        mediaPlayer = MediaPlayer().apply {
-            setDataSource(filePath)
-            prepare()
-            start()
-            setOnCompletionListener {
-                onCompletion()
-                mediaPlayer?.release()
-                mediaPlayer = null
-            }
+        audioPlayer.stop()
+        audioPlayer.setDataSource(filePath)
+        audioPlayer.prepare()
+        audioPlayer.start()
+        audioPlayer.setOnCompletionListener {
+            onCompletion()
         }
     }
 
     fun pauseAudio() {
-        mediaPlayer?.pause()
+        audioPlayer.pause()
     }
 
     fun resumeAudio() {
-        mediaPlayer?.start()
+        audioPlayer.start()
     }
 
     fun stopAudio() {
-        mediaPlayer?.apply {
-            stop()
-            release()
-        }
-        mediaPlayer = null
+        audioPlayer.stop()
+        audioPlayer.release()
     }
 
     @Throws(IOException::class)
@@ -152,16 +138,15 @@ class AudioRecordingRepository(private val context: Context) {
         }
     }
 
-    fun getCurrentPosition(): Int = mediaPlayer?.currentPosition ?: 0
+    fun getCurrentPosition(): Int = audioPlayer.getCurrentPosition()
 
-    fun getDuration(): Int = mediaPlayer?.duration ?: 0
+    fun getDuration(): Int = audioPlayer.getDuration()
 
     private fun getAudioDuration(filePath: String): String {
         return try {
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(filePath)
-            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
-            retriever.release()
+            metadataRetriever.setDataSource(filePath)
+            val durationMs = metadataRetriever.extractDuration() ?: 0L
+            metadataRetriever.release()
             formatDuration(durationMs)
         } catch (e: Exception) {
             "00:00:00"
