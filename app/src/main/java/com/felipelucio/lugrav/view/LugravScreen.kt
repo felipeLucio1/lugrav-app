@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,7 +42,6 @@ import com.felipelucio.lugrav.view.components.formatTime
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import com.google.accompanist.permissions.shouldShowRationale
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -60,7 +60,6 @@ fun LugravScreen(
     
     val isPlaying by viewModel.isPlaying.collectAsState()
     val playbackTimeFormatted by viewModel.playbackTimeFormatted.collectAsState()
-    val selectedAudioPath by viewModel.selectedAudioPath.collectAsState()
     val currentPlayingPath by viewModel.currentPlayingPath.collectAsState()
     
     val deleteResult by viewModel.deleteResult.collectAsState()
@@ -77,6 +76,11 @@ fun LugravScreen(
     
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    BackHandler(enabled = selectedFilePath != null) {
+        selectedFilePath = null
+    }
+
     val savedMessage = stringResource(R.string.recording_saved)
     val errorMessage = stringResource(R.string.recording_error)
     val permissionDeniedMessage = stringResource(R.string.permission_denied)
@@ -148,7 +152,7 @@ fun LugravScreen(
     if (selectedRecording != null) {
         val isCurrentAudioPlaying = isPlaying && currentPlayingPath == selectedRecording
         RecordingBottomSheet(
-            audioTitle = java.io.File(selectedRecording!!).nameWithoutExtension,
+            audioTitle = File(selectedRecording!!).nameWithoutExtension,
             isPlaying = isCurrentAudioPlaying,
             playbackTime = playbackTimeFormatted,
             onPlayPauseClick = { viewModel.togglePlayPause(selectedRecording!!) },
@@ -178,6 +182,8 @@ fun LugravScreen(
         modifier = modifier.fillMaxSize(),
         topBar = { 
             LugravTopBar(
+                isSelectionMode = selectedFilePath != null,
+                onClearSelection = { selectedFilePath = null },
                 onShareClick = if (selectedFilePath != null) {
                     { shareRecording(selectedFilePath!!) }
                 } else null,
@@ -227,14 +233,18 @@ fun LugravScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    itemsIndexed(recordingsList) { index, recording ->
+                    itemsIndexed(recordingsList) { _, recording ->
                         RecordingCard(
                             filePath = recording.path,
                             duration = recording.duration,
                             isSelected = selectedFilePath == recording.path,
                             onClick = {
-                                if (selectedFilePath == recording.path) {
-                                    selectedFilePath = null
+                                if (selectedFilePath != null) {
+                                    if (selectedFilePath == recording.path) {
+                                        selectedFilePath = null
+                                    } else {
+                                        selectedFilePath = recording.path
+                                    }
                                 } else {
                                     selectedRecording = recording.path
                                 }
