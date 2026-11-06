@@ -227,6 +227,33 @@ class AudioRecordingRepositoryTest {
         }
     }
 
+    @Test
+    fun `when get recordings list with multiple files then should extract duration for each file`() {
+        val appFolder = File(tempExternalDir, "lugrav")
+        appFolder.mkdirs()
+        File(appFolder, "test1.aac").createNewFile()
+        File(appFolder, "test2.aac").createNewFile()
+        every { metadataRetriever.extractDuration() } returns 10000L
+
+        repository.getRecordingsList()
+
+        verify(exactly = 2) { metadataRetriever.setDataSource(any()) }
+        verify(exactly = 2) { metadataRetriever.extractDuration() }
+        verify(exactly = 2) { metadataRetriever.release() }
+    }
+
+    @Test
+    fun `when duration is 65000 milliseconds then should format as 00_01_05`() {
+        val appFolder = File(tempExternalDir, "lugrav")
+        appFolder.mkdirs()
+        File(appFolder, "test.aac").createNewFile()
+        every { metadataRetriever.extractDuration() } returns 65000L
+
+        val list = repository.getRecordingsList()
+
+        assertEquals("00:01:05", list.first().duration)
+    }
+
     // ==================== playAudio() Tests ====================
 
     @Test
@@ -366,6 +393,33 @@ class AudioRecordingRepositoryTest {
         val list = repository.getRecordingsList()
 
         assertEquals("00:00:00", list.first().duration)
+        verify { metadataRetriever.release() }
+    }
+
+    @Test
+    fun `when set data source fails then should return default and release retriever`() {
+        val appFolder = File(tempExternalDir, "lugrav")
+        appFolder.mkdirs()
+        File(appFolder, "test.aac").createNewFile()
+        every { metadataRetriever.setDataSource(any()) } throws Exception("Error")
+
+        val list = repository.getRecordingsList()
+
+        assertEquals("00:00:00", list.first().duration)
+        verify { metadataRetriever.release() }
+    }
+
+    @Test
+    fun `when extract duration returns null then should return default 00_00_00`() {
+        val appFolder = File(tempExternalDir, "lugrav")
+        appFolder.mkdirs()
+        File(appFolder, "test.aac").createNewFile()
+        every { metadataRetriever.extractDuration() } returns null
+
+        val list = repository.getRecordingsList()
+
+        assertEquals("00:00:00", list.first().duration)
+        verify { metadataRetriever.release() }
     }
 
     @Test

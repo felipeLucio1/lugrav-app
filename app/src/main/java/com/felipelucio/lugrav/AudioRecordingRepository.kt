@@ -142,14 +142,16 @@ class AudioRecordingRepository(
 
     fun getDuration(): Int = audioPlayer.getDuration()
 
+    @Synchronized
     private fun getAudioDuration(filePath: String): String {
         return try {
             metadataRetriever.setDataSource(filePath)
             val durationMs = metadataRetriever.extractDuration() ?: 0L
-            metadataRetriever.release()
             formatDuration(durationMs)
         } catch (e: Exception) {
             "00:00:00"
+        } finally {
+            runCatching { metadataRetriever.release() }
         }
     }
 

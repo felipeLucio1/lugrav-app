@@ -3,17 +3,32 @@ package com.felipelucio.lugrav.interfaces
 import android.media.MediaMetadataRetriever
 
 class MetadataRetrieverImpl : MetadataRetriever {
-    private val retriever = MediaMetadataRetriever()
-    
+    private var retriever: MediaMetadataRetriever? = null
+
     override fun setDataSource(path: String) {
-        retriever.setDataSource(path)
+        release()
+        val newRetriever = MediaMetadataRetriever()
+        try {
+            newRetriever.setDataSource(path)
+            retriever = newRetriever
+        } catch (e: Exception) {
+            runCatching { newRetriever.release() }
+            throw e
+        }
     }
-    
+
     override fun extractDuration(): Long? {
-        return retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+        return try {
+            retriever
+                ?.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull()
+        } catch (e: Exception) {
+            null
+        }
     }
-    
+
     override fun release() {
-        retriever.release()
+        retriever?.let { runCatching { it.release() } }
+        retriever = null
     }
 }
