@@ -6,105 +6,113 @@
     android:viewportWidth="1024"
     android:viewportHeight="1024">
 
-    <!-- Barra externa esquerda (mais clara) -->
-    <path
-        android:pathData="M260,432 A28,28 0 0 1 288,460 L288,564 A28,28 0 0 1 260,592 A28,28 0 0 1 232,564 L232,460 A28,28 0 0 1 260,432 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="0"
-                android:endY="160"
-                android:startX="0"
-                android:startY="432"
-                android:type="linear">
-                <item android:color="#F2F9FE" android:offset="0" />
-                <item android:color="#BFE3F6" android:offset="1" />
-            </gradient>
-        </aapt:attr>
-    </path>
+    <group
+        android:pivotX="512"
+        android:pivotY="512"
+        android:scaleX="0.65"
+        android:scaleY="0.65">
 
-    <!-- Barra interna esquerda -->
-    <path
-        android:pathData="M348,336 A28,28 0 0 1 376,364 L376,660 A28,28 0 0 1 348,688 A28,28 0 0 1 320,660 L320,364 A28,28 0 0 1 348,336 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="0"
-                android:endY="352"
-                android:startX="0"
-                android:startY="336"
-                android:type="linear">
-                <item android:color="#F2F9FE" android:offset="0" />
-                <item android:color="#D2EBFA" android:offset="1" />
-            </gradient>
-        </aapt:attr>
-    </path>
+        <!-- Barra externa esquerda (mais clara) -->
+        <path
+            android:pathData="M260,432 A28,28 0 0 1 288,460 L288,564 A28,28 0 0 1 260,592 A28,28 0 0 1 232,564 L232,460 A28,28 0 0 1 260,432 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:endX="0"
+                    android:endY="160"
+                    android:startX="0"
+                    android:startY="432"
+                    android:type="linear">
+                    <item android:color="#F2F9FE" android:offset="0" />
+                    <item android:color="#BFE3F6" android:offset="1" />
+                </gradient>
+            </aapt:attr>
+        </path>
 
-    <!-- Barra interna direita -->
-    <path
-        android:pathData="M676,336 A28,28 0 0 1 704,364 L704,660 A28,28 0 0 1 676,688 A28,28 0 0 1 648,660 L648,364 A28,28 0 0 1 676,336 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="0"
-                android:endY="352"
-                android:startX="0"
-                android:startY="336"
-                android:type="linear">
-                <item android:color="#F2F9FE" android:offset="0" />
-                <item android:color="#D2EBFA" android:offset="1" />
-            </gradient>
-        </aapt:attr>
-    </path>
+        <!-- Barra interna esquerda -->
+        <path
+            android:pathData="M348,336 A28,28 0 0 1 376,364 L376,660 A28,28 0 0 1 348,688 A28,28 0 0 1 320,660 L320,364 A28,28 0 0 1 348,336 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:endX="0"
+                    android:endY="352"
+                    android:startX="0"
+                    android:startY="336"
+                    android:type="linear">
+                    <item android:color="#F2F9FE" android:offset="0" />
+                    <item android:color="#D2EBFA" android:offset="1" />
+                </gradient>
+            </aapt:attr>
+        </path>
 
-    <!-- Barra externa direita (mais clara) -->
-    <path
-        android:pathData="M764,432 A28,28 0 0 1 792,460 L792,564 A28,28 0 0 1 764,592 A28,28 0 0 1 736,564 L736,460 A28,28 0 0 1 764,432 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="0"
-                android:endY="160"
-                android:startX="0"
-                android:startY="432"
-                android:type="linear">
-                <item android:color="#F2F9FE" android:offset="0" />
-                <item android:color="#BFE3F6" android:offset="1" />
-            </gradient>
-        </aapt:attr>
-    </path>
+        <!-- Barra interna direita -->
+        <path
+            android:pathData="M676,336 A28,28 0 0 1 704,364 L704,660 A28,28 0 0 1 676,688 A28,28 0 0 1 648,660 L648,364 A28,28 0 0 1 676,336 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:endX="0"
+                    android:endY="352"
+                    android:startX="0"
+                    android:startY="336"
+                    android:type="linear">
+                    <item android:color="#F2F9FE" android:offset="0" />
+                    <item android:color="#D2EBFA" android:offset="1" />
+                </gradient>
+            </aapt:attr>
+        </path>
 
-    <!-- Cápsula branca central -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M512,224 A104,104 0 0 1 616,328 L616,696 A104,104 0 0 1 512,800 A104,104 0 0 1 408,696 L408,328 A104,104 0 0 1 512,224 Z" />
+        <!-- Barra externa direita (mais clara) -->
+        <path
+            android:pathData="M764,432 A28,28 0 0 1 792,460 L792,564 A28,28 0 0 1 764,592 A28,28 0 0 1 736,564 L736,460 A28,28 0 0 1 764,432 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:endX="0"
+                    android:endY="160"
+                    android:startX="0"
+                    android:startY="432"
+                    android:type="linear">
+                    <item android:color="#F2F9FE" android:offset="0" />
+                    <item android:color="#BFE3F6" android:offset="1" />
+                </gradient>
+            </aapt:attr>
+        </path>
 
-    <!-- Cabeça do microfone (azul) -->
-    <path
-        android:fillColor="#2BB3F3"
-        android:pathData="M512,296 A36,36 0 0 1 548,332 L548,396 A36,36 0 0 1 512,432 A36,36 0 0 1 476,396 L476,332 A36,36 0 0 1 512,296 Z" />
+        <!-- Cápsula branca central -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M512,224 A104,104 0 0 1 616,328 L616,696 A104,104 0 0 1 512,800 A104,104 0 0 1 408,696 L408,328 A104,104 0 0 1 512,224 Z" />
 
-    <!-- Suporte em U do microfone -->
-    <path
-        android:pathData="M460,440 C460,472 484,488 512,488 C540,488 564,472 564,440"
-        android:strokeColor="#2BB3F3"
-        android:strokeWidth="16"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        <!-- Cabeça do microfone (azul) -->
+        <path
+            android:fillColor="#2BB3F3"
+            android:pathData="M512,296 A36,36 0 0 1 548,332 L548,396 A36,36 0 0 1 512,432 A36,36 0 0 1 476,396 L476,332 A36,36 0 0 1 512,296 Z" />
 
-    <!-- Haste do microfone -->
-    <path
-        android:pathData="M512,492 L512,552"
-        android:strokeColor="#2BB3F3"
-        android:strokeWidth="16"
-        android:strokeLineCap="round" />
+        <!-- Suporte em U do microfone -->
+        <path
+            android:pathData="M460,440 C460,472 484,488 512,488 C540,488 564,472 564,440"
+            android:strokeColor="#2BB3F3"
+            android:strokeWidth="16"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
 
-    <!-- Base do microfone -->
-    <path
-        android:pathData="M480,560 L544,560"
-        android:strokeColor="#2BB3F3"
-        android:strokeWidth="16"
-        android:strokeLineCap="round" />
+        <!-- Haste do microfone -->
+        <path
+            android:pathData="M512,492 L512,552"
+            android:strokeColor="#2BB3F3"
+            android:strokeWidth="16"
+            android:strokeLineCap="round" />
 
-    <!-- Ponto de gravação -->
-    <path
-        android:fillColor="#2BB3F3"
-        android:pathData="M512,652 A20,20 0 1 1 512,692 A20,20 0 1 1 512,652 Z" />
+        <!-- Base do microfone -->
+        <path
+            android:pathData="M480,560 L544,560"
+            android:strokeColor="#2BB3F3"
+            android:strokeWidth="16"
+            android:strokeLineCap="round" />
+
+        <!-- Ponto de gravação -->
+        <path
+            android:fillColor="#2BB3F3"
+            android:pathData="M512,652 A20,20 0 1 1 512,692 A20,20 0 1 1 512,652 Z" />
+
+    </group>
 
 </vector>
