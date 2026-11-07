@@ -27,6 +27,7 @@ fun LugravTopBar(
     isSelectionMode: Boolean = false,
     onClearSelection: (() -> Unit)? = null,
     onShareClick: (() -> Unit)? = null,
+    onRenameClick: (() -> Unit)? = null,
     onDeleteClick: (() -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -65,6 +66,15 @@ fun LugravTopBar(
                     onShareClick?.let {
                         DropdownMenuItem(
                             text = { Text(text = stringResource(R.string.share_button)) },
+                            onClick = {
+                                showMenu = false
+                                it()
+                            }
+                        )
+                    }
+                    onRenameClick?.let {
+                        DropdownMenuItem(
+                            text = { Text(text = stringResource(R.string.rename_button)) },
                             onClick = {
                                 showMenu = false
                                 it()

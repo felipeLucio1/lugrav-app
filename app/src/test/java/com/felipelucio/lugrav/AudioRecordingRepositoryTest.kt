@@ -365,6 +365,75 @@ class AudioRecordingRepositoryTest {
         repository.deleteRecording("/fake/path/test.aac")
     }
 
+    // ==================== renameRecording() Tests ====================
+
+    @Test
+    fun `when rename recording then should rename file and preserve content`() {
+        val source = File(tempExternalDir, "original.aac")
+        val content = byteArrayOf(1, 2, 3, 4, 5)
+        source.writeBytes(content)
+
+        val newPath = repository.renameRecording(source.absolutePath, "Renomeada")
+        val renamed = File(newPath)
+
+        assertTrue(renamed.exists())
+        assertFalse(source.exists())
+        assertEquals("Renomeada.aac", renamed.name)
+        assertArrayEquals(content, renamed.readBytes())
+    }
+
+    @Test
+    fun `when rename recording with extension then should not duplicate extension`() {
+        val source = File(tempExternalDir, "original.aac")
+        source.writeBytes(byteArrayOf(1))
+
+        val newPath = repository.renameRecording(source.absolutePath, "Renomeada.aac")
+
+        assertEquals("Renomeada.aac", File(newPath).name)
+    }
+
+    @Test
+    fun `when rename recording to same name then should return same path`() {
+        val source = File(tempExternalDir, "original.aac")
+        source.writeBytes(byteArrayOf(1))
+
+        val newPath = repository.renameRecording(source.absolutePath, "original")
+
+        assertEquals(source.absolutePath, newPath)
+        assertTrue(source.exists())
+    }
+
+    @Test(expected = IOException::class)
+    fun `when rename recording with empty name then should throw IOException`() {
+        val source = File(tempExternalDir, "original.aac")
+        source.createNewFile()
+
+        repository.renameRecording(source.absolutePath, "")
+    }
+
+    @Test(expected = IOException::class)
+    fun `when rename recording with invalid characters then should throw IOException`() {
+        val source = File(tempExternalDir, "original.aac")
+        source.createNewFile()
+
+        repository.renameRecording(source.absolutePath, "nome/invalido")
+    }
+
+    @Test(expected = IOException::class)
+    fun `when rename recording to existing name then should throw IOException`() {
+        val source = File(tempExternalDir, "original.aac")
+        val target = File(tempExternalDir, "Renomeada.aac")
+        source.createNewFile()
+        target.createNewFile()
+
+        repository.renameRecording(source.absolutePath, "Renomeada")
+    }
+
+    @Test(expected = IOException::class)
+    fun `when rename recording non-existent file then should throw IOException`() {
+        repository.renameRecording(File(tempExternalDir, "missing.aac").absolutePath, "Renomeada")
+    }
+
     // ==================== getCurrentPosition() and getDuration() Tests ====================
 
     @Test

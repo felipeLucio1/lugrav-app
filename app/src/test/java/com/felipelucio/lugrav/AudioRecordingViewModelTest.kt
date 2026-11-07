@@ -1,6 +1,8 @@
 package com.felipelucio.lugrav
 
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -13,6 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import java.io.IOException
 
 @ExperimentalCoroutinesApi
 class AudioRecordingViewModelTest {
@@ -97,5 +100,58 @@ class AudioRecordingViewModelTest {
     fun `when clear delete result is called then deleteResult should be set to null`() = runTest {
         viewModel.clearDeleteResult()
         assertNull(viewModel.deleteResult.value)
+    }
+
+    @Test
+    fun `when rename succeeds then renameResult should be success`() = runTest {
+        every { repository.renameRecording("old.aac", "novo") } returns "novo.aac"
+
+        viewModel.renameRecording("old.aac", "novo")
+
+        assertTrue(viewModel.renameResult.value?.isSuccess == true)
+        verify { repository.renameRecording("old.aac", "novo") }
+    }
+
+    @Test
+    fun `when rename fails then renameResult should be failure`() = runTest {
+        every { repository.renameRecording(any(), any()) } throws IOException("fail")
+
+        viewModel.renameRecording("old.aac", "novo")
+
+        assertTrue(viewModel.renameResult.value?.isFailure == true)
+    }
+
+    @Test
+    fun `when clear rename result then renameResult should be null`() = runTest {
+        every { repository.renameRecording(any(), any()) } returns "novo.aac"
+        viewModel.renameRecording("old.aac", "novo")
+
+        viewModel.clearRenameResult()
+
+        assertNull(viewModel.renameResult.value)
+    }
+
+    @Test
+    fun `when renaming current playing file then should stop playback`() = runTest {
+        every { repository.renameRecording(any(), any()) } returns "novo.aac"
+        viewModel.playAudio("old.aac")
+
+        viewModel.renameRecording("old.aac", "novo")
+
+        verify { repository.stopAudio() }
+        assertFalse(viewModel.isPlaying.value)
+        assertNull(viewModel.currentPlayingPath.value)
+    }
+
+    @Test
+    fun `when renaming another file then should not stop playback`() = runTest {
+        every { repository.renameRecording(any(), any()) } returns "novo.aac"
+        viewModel.playAudio("playing.aac")
+
+        viewModel.renameRecording("other.aac", "novo")
+
+        verify(exactly = 0) { repository.stopAudio() }
+        assertTrue(viewModel.isPlaying.value)
+        assertEquals("playing.aac", viewModel.currentPlayingPath.value)
     }
 }

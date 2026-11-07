@@ -35,6 +35,7 @@ import com.felipelucio.lugrav.R
 import com.felipelucio.lugrav.view.components.DeleteConfirmationDialog
 import com.felipelucio.lugrav.view.components.LugravTopBar
 import com.felipelucio.lugrav.view.components.PermissionRationaleDialog
+import com.felipelucio.lugrav.view.components.RenameRecordingDialog
 import com.felipelucio.lugrav.view.components.RecordingBottomSheet
 import com.felipelucio.lugrav.view.components.RecordingCard
 import com.felipelucio.lugrav.view.components.RecordingFAB
@@ -63,6 +64,7 @@ fun LugravScreen(
     val currentPlayingPath by viewModel.currentPlayingPath.collectAsState()
     
     val deleteResult by viewModel.deleteResult.collectAsState()
+    val renameResult by viewModel.renameResult.collectAsState()
     
     val audioPermissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
     
@@ -73,6 +75,7 @@ fun LugravScreen(
     
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
     
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -85,6 +88,8 @@ fun LugravScreen(
     val errorMessage = stringResource(R.string.recording_error)
     val permissionDeniedMessage = stringResource(R.string.permission_denied)
     val deleteErrorMessage = stringResource(R.string.delete_error)
+    val renameSuccessMessage = stringResource(R.string.rename_success)
+    val renameErrorMessage = stringResource(R.string.rename_error)
     
     fun openAppSettings() {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -134,6 +139,17 @@ fun LugravScreen(
         }
     }
     
+    LaunchedEffect(renameResult) {
+        val result = renameResult ?: return@LaunchedEffect
+        viewModel.clearRenameResult()
+        result.onSuccess {
+            selectedFilePath = null
+            snackbarHostState.showSnackbar(renameSuccessMessage)
+        }.onFailure {
+            snackbarHostState.showSnackbar(renameErrorMessage)
+        }
+    }
+
     if (showRationaleDialog) {
         PermissionRationaleDialog(
             onDismiss = { 
@@ -178,6 +194,18 @@ fun LugravScreen(
         )
     }
     
+    val renameFilePath = selectedFilePath
+    if (showRenameDialog && renameFilePath != null) {
+        RenameRecordingDialog(
+            initialName = File(renameFilePath).nameWithoutExtension,
+            onConfirm = { newName ->
+                viewModel.renameRecording(renameFilePath, newName)
+                showRenameDialog = false
+            },
+            onDismiss = { showRenameDialog = false }
+        )
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = { 
@@ -186,6 +214,9 @@ fun LugravScreen(
                 onClearSelection = { selectedFilePath = null },
                 onShareClick = if (selectedFilePath != null) {
                     { shareRecording(selectedFilePath!!) }
+                } else null,
+                onRenameClick = if (selectedFilePath != null) {
+                    { showRenameDialog = true }
                 } else null,
                 onDeleteClick = if (selectedFilePath != null) {
                     { showDeleteDialog = true }

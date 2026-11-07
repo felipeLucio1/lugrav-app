@@ -23,11 +23,13 @@ class AudioRecordingRepository(
     companion object {
         private const val APP_FOLDER = "lugrav"
         private const val DATE_FORMAT = "yyyyMMdd_HHmmss"
-        private const val FILE_EXTENSION = ".aac"
     }
 
     fun startRecording() {
-        tempFile = File(fileProvider.getCacheDir(), "temp_audio_${System.currentTimeMillis()}.aac")
+        tempFile = File(
+            fileProvider.getCacheDir(),
+            "temp_audio_${System.currentTimeMillis()}${RecordingFileRules.EXTENSION}"
+        )
 
         audioRecorder.setup(
             audioSource = android.media.MediaRecorder.AudioSource.MIC,
@@ -71,7 +73,7 @@ class AudioRecordingRepository(
             append(APP_FOLDER)
             append("_")
             append(timestamp)
-            append(FILE_EXTENSION)
+            append(RecordingFileRules.EXTENSION)
         }
         val outputFile = File(appFolder, fileName)
 
@@ -89,7 +91,7 @@ class AudioRecordingRepository(
         }
 
         val files = appFolder.listFiles { file ->
-            file.extension == "aac"
+            file.isFile && file.name.endsWith(RecordingFileRules.EXTENSION, ignoreCase = true)
         } ?: return emptyList()
 
         return files.map { file ->
@@ -136,6 +138,39 @@ class AudioRecordingRepository(
         if (!file.delete()) {
             throw IOException("Failed to delete file: $filePath")
         }
+    }
+
+    @Throws(IOException::class)
+    fun renameRecording(filePath: String, newName: String): String {
+        val source = File(filePath)
+        if (!source.exists()) {
+            throw IOException("File does not exist: $filePath")
+        }
+
+        val currentName = source.nameWithoutExtension
+        val normalizedName = RecordingFileRules.normalizeName(newName)
+
+        if (normalizedName == currentName) {
+            return source.absolutePath
+        }
+
+        if (!RecordingFileRules.isValidName(newName, currentName)) {
+            throw IOException("Invalid file name: $newName")
+        }
+
+        val parent = source.parentFile
+            ?: throw IOException("File has no parent directory: $filePath")
+        val target = File(parent, "$normalizedName${RecordingFileRules.EXTENSION}")
+
+        if (target.exists()) {
+            throw IOException("File already exists: ${target.absolutePath}")
+        }
+
+        if (!source.renameTo(target)) {
+            throw IOException("Failed to rename file: $filePath")
+        }
+
+        return target.absolutePath
     }
 
     fun getCurrentPosition(): Int = audioPlayer.getCurrentPosition()

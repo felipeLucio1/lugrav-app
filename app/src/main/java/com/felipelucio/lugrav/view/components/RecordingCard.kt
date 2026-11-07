@@ -35,7 +35,7 @@ fun RecordingCard(
     modifier: Modifier = Modifier
 ) {
     val fileName = File(filePath).nameWithoutExtension
-    val dateStr = extractDateFromFileName(filePath)
+    val dateStr = extractDateFromFile(filePath)
     
     ElevatedCard(
         modifier = modifier
@@ -77,18 +77,19 @@ fun RecordingCard(
     }
 }
 
-private fun extractDateFromFileName(filePath: String): String {
-    return try {
-        val fileName = File(filePath).nameWithoutExtension
-        val parts = fileName.split("_")
-        if (parts.size >= 2) {
-            val datePart = parts[1]
-            val parsedDate = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).parse(datePart)
-            SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(parsedDate ?: Date())
-        } else {
-            ""
-        }
-    } catch (e: Exception) {
-        ""
-    }
+private val RECORDING_FILE_NAME_PATTERN = Regex("""^lugrav_(\d{8})_\d{6}$""")
+
+private fun extractDateFromFile(filePath: String): String {
+    val file = File(filePath)
+    val parsedDate = parseDateFromFileName(file.nameWithoutExtension)
+        ?: Date(file.lastModified().takeIf { it > 0 } ?: System.currentTimeMillis())
+
+    return SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(parsedDate)
+}
+
+private fun parseDateFromFileName(fileName: String): Date? {
+    val match = RECORDING_FILE_NAME_PATTERN.matchEntire(fileName) ?: return null
+    return runCatching {
+        SimpleDateFormat("yyyyMMdd", Locale.getDefault()).parse(match.groupValues[1])
+    }.getOrNull()
 }

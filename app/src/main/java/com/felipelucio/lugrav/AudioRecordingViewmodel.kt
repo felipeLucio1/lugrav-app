@@ -40,10 +40,13 @@ class AudioRecordingViewModel(
     val playbackTimeFormatted: StateFlow<String> = _playbackTimeFormatted
 
     private var playbackJob: Job? = null
-    private val deleteMutex = Mutex()
+    private val fileOperationMutex = Mutex()
 
     private val _deleteResult = MutableStateFlow<Result<Unit>?>(null)
     val deleteResult: StateFlow<Result<Unit>?> = _deleteResult
+
+    private val _renameResult = MutableStateFlow<Result<Unit>?>(null)
+    val renameResult: StateFlow<Result<Unit>?> = _renameResult
 
     fun loadRecordings() {
         viewModelScope.launch {
@@ -54,7 +57,7 @@ class AudioRecordingViewModel(
 
     fun deleteRecording(filePath: String) {
         viewModelScope.launch {
-            deleteMutex.withLock {
+            fileOperationMutex.withLock {
                 try {
                     repository.deleteRecording(filePath)
                     loadRecordings()
@@ -68,6 +71,27 @@ class AudioRecordingViewModel(
 
     fun clearDeleteResult() {
         _deleteResult.value = null
+    }
+
+    fun renameRecording(filePath: String, newName: String) {
+        viewModelScope.launch {
+            fileOperationMutex.withLock {
+                try {
+                    if (_currentPlayingPath.value == filePath) {
+                        stopAudio()
+                    }
+                    repository.renameRecording(filePath, newName)
+                    loadRecordings()
+                    _renameResult.value = Result.success(Unit)
+                } catch (e: Exception) {
+                    _renameResult.value = Result.failure(e)
+                }
+            }
+        }
+    }
+
+    fun clearRenameResult() {
+        _renameResult.value = null
     }
 
     fun startRecording() {
