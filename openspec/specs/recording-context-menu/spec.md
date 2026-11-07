@@ -19,7 +19,7 @@ The system SHALL display a back arrow (ArrowBack) and a context menu (MoreVert) 
 #### Scenario: Context menu is shown in selection mode
 - **WHEN** a recording is selected
 - **THEN** MoreVert action SHALL be displayed in LugravTopBar
-- **AND** tapping it SHALL open a dropdown with Share and Delete actions
+- **AND** tapping it SHALL open a dropdown with Share, Rename, and Delete actions
 
 ### Requirement: Share recording
 The system SHALL allow sharing a selected recording via Android share intent.
