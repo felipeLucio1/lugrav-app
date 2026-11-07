@@ -116,10 +116,6 @@ fun LugravScreen(
         selectedFilePath = null
     }
     
-    LaunchedEffect(Unit) {
-        viewModel.loadRecordings()
-    }
-    
     LaunchedEffect(recordingSuccess) {
         recordingSuccess?.let { result ->
             result.onSuccess {

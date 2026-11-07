@@ -2,6 +2,9 @@ package com.felipelucio.lugrav
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,10 +12,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class AudioRecordingViewModel(
-    private val repository: AudioRecordingRepository
+    private val repository: AudioRecordingRepository,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
 
     private val _isRecording = MutableStateFlow(false)
@@ -26,6 +31,9 @@ class AudioRecordingViewModel(
 
     private val _recordingsList = MutableStateFlow<List<AudioRecordingModel>>(emptyList())
     val recordingsList: StateFlow<List<AudioRecordingModel>> = _recordingsList
+
+    private val _isLoadingRecordings = MutableStateFlow(true)
+    val isLoadingRecordings: StateFlow<Boolean> = _isLoadingRecordings
 
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying
@@ -49,9 +57,19 @@ class AudioRecordingViewModel(
     val renameResult: StateFlow<Result<Unit>?> = _renameResult
 
     fun loadRecordings() {
+        _isLoadingRecordings.value = true
         viewModelScope.launch {
-            val recordings = repository.getRecordingsList()
-            _recordingsList.value = recordings
+            try {
+                val recordings = withContext(ioDispatcher) {
+                    repository.getRecordingsList()
+                }
+                _recordingsList.value = recordings
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            } finally {
+                _isLoadingRecordings.value = false
+            }
         }
     }
 

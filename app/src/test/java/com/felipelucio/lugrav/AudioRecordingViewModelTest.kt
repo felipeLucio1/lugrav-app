@@ -28,12 +28,37 @@ class AudioRecordingViewModelTest {
         Dispatchers.setMain(Dispatchers.Unconfined)
         
         repository = mockk(relaxed = true)
-        viewModel = AudioRecordingViewModel(repository)
+        viewModel = AudioRecordingViewModel(repository, Dispatchers.Unconfined)
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `when view model is created then loading state should be true`() {
+        assertTrue(viewModel.isLoadingRecordings.value)
+    }
+
+    @Test
+    fun `when load recordings succeeds then loading state should be false and list updated`() = runTest {
+        val recordings = listOf(AudioRecordingModel("recording.aac", "00:00:01"))
+        every { repository.getRecordingsList() } returns recordings
+
+        viewModel.loadRecordings()
+
+        assertFalse(viewModel.isLoadingRecordings.value)
+        assertEquals(recordings, viewModel.recordingsList.value)
+    }
+
+    @Test
+    fun `when load recordings fails then loading state should be false`() = runTest {
+        every { repository.getRecordingsList() } throws IOException("fail")
+
+        viewModel.loadRecordings()
+
+        assertFalse(viewModel.isLoadingRecordings.value)
     }
 
     @Test
