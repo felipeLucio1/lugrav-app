@@ -49,6 +49,7 @@ class AudioRecordingViewModel(
 
     private var playbackJob: Job? = null
     private val fileOperationMutex = Mutex()
+    private var activeFilter: RecordingFilter = RecordingFilter.All
 
     private val _deleteResult = MutableStateFlow<Result<Unit>?>(null)
     val deleteResult: StateFlow<Result<Unit>?> = _deleteResult
@@ -56,12 +57,13 @@ class AudioRecordingViewModel(
     private val _renameResult = MutableStateFlow<Result<Unit>?>(null)
     val renameResult: StateFlow<Result<Unit>?> = _renameResult
 
-    fun loadRecordings() {
+    fun loadRecordings(filter: RecordingFilter = activeFilter) {
+        activeFilter = filter
         _isLoadingRecordings.value = true
         viewModelScope.launch {
             try {
                 val recordings = withContext(ioDispatcher) {
-                    repository.getRecordingsList()
+                    repository.getRecordingsList(filter)
                 }
                 _recordingsList.value = recordings
             } catch (e: CancellationException) {
