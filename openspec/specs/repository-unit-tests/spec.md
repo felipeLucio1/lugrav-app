@@ -64,7 +64,7 @@ The repository SHALL list all recorded audio files with their durations.
 - **WHEN** `getRecordingsList()` is called and app folder contains `.aac` files
 - **THEN** a list of `AudioRecordingModel` objects SHALL be returned with path and duration
 
-#### Scenario: Get recordings list filters only aac files
+#### Scenario: Get recordings list includes only aac files
 - **WHEN** `getRecordingsList()` is called
 - **THEN** only files with `.aac` extension SHALL be included in the list
 
@@ -218,3 +218,18 @@ The repository SHALL rename recording files while validating names and preservin
 #### Scenario: Rename non-existent file throws IOException
 - **WHEN** `renameRecording(filePath, newName)` is called and the source file does not exist
 - **THEN** an `IOException` SHALL be thrown
+
+### Requirement: Test recording timestamp and ordering
+The repository tests SHALL verify that recordings use `lastModified()` and are ordered newest first.
+
+#### Scenario: Timestamp comes from last modified
+- **WHEN** `getRecordingsList()` processes a file with a known `lastModified()` value
+- **THEN** the returned model SHALL contain that value in `createdAtMillis`
+
+#### Scenario: Newest recording comes first
+- **WHEN** `getRecordingsList()` processes files with different `lastModified()` values
+- **THEN** the returned list SHALL be ordered by `createdAtMillis` descending
+
+#### Scenario: Equal timestamps are ordered by path
+- **WHEN** two files have the same `lastModified()` value
+- **THEN** the returned list SHALL be ordered by `path` ascending
