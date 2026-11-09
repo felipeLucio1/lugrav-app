@@ -2,6 +2,5 @@ package com.felipelucio.lugrav
 
 data class AudioRecordingModel(
     val path: String,
-    val duration: String,
-    val createdAtMillis: Long
+    val duration: String
 )

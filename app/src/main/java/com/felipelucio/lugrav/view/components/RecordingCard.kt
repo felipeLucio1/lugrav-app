@@ -29,19 +29,14 @@ import java.util.Locale
 fun RecordingCard(
     filePath: String,
     duration: String,
-    createdAtMillis: Long,
     onClick: () -> Unit,
     onLongPress: () -> Unit = {},
     isSelected: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val fileName = File(filePath).nameWithoutExtension
-    val metadataText = if (createdAtMillis > 0) {
-        "${formatCreatedAt(createdAtMillis)} · $duration"
-    } else {
-        duration
-    }
-
+    val dateStr = extractDateFromFile(filePath)
+    
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
@@ -73,7 +68,7 @@ fun RecordingCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = metadataText,
+                    text = "$dateStr · $duration",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -82,7 +77,19 @@ fun RecordingCard(
     }
 }
 
-private fun formatCreatedAt(createdAtMillis: Long): String {
-    return SimpleDateFormat("dd MMM yyyy · HH:mm", Locale.getDefault())
-        .format(Date(createdAtMillis))
+private val RECORDING_FILE_NAME_PATTERN = Regex("""^lugrav_(\d{8})_\d{6}$""")
+
+private fun extractDateFromFile(filePath: String): String {
+    val file = File(filePath)
+    val parsedDate = parseDateFromFileName(file.nameWithoutExtension)
+        ?: Date(file.lastModified().takeIf { it > 0 } ?: System.currentTimeMillis())
+
+    return SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(parsedDate)
+}
+
+private fun parseDateFromFileName(fileName: String): Date? {
+    val match = RECORDING_FILE_NAME_PATTERN.matchEntire(fileName) ?: return null
+    return runCatching {
+        SimpleDateFormat("yyyyMMdd", Locale.getDefault()).parse(match.groupValues[1])
+    }.getOrNull()
 }

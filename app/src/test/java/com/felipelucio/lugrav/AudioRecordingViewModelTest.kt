@@ -43,8 +43,8 @@ class AudioRecordingViewModelTest {
 
     @Test
     fun `when load recordings succeeds then loading state should be false and list updated`() = runTest {
-        val recordings = listOf(AudioRecordingModel("recording.aac", "00:00:01", 1_000L))
-        every { repository.getRecordingsList(any()) } returns recordings
+        val recordings = listOf(AudioRecordingModel("recording.aac", "00:00:01"))
+        every { repository.getRecordingsList() } returns recordings
 
         viewModel.loadRecordings()
 
@@ -54,32 +54,11 @@ class AudioRecordingViewModelTest {
 
     @Test
     fun `when load recordings fails then loading state should be false`() = runTest {
-        every { repository.getRecordingsList(any()) } throws IOException("fail")
+        every { repository.getRecordingsList() } throws IOException("fail")
 
         viewModel.loadRecordings()
 
         assertFalse(viewModel.isLoadingRecordings.value)
-    }
-
-    @Test
-    fun `when load recordings with custom filter then repository receives filter`() = runTest {
-        val filter = RecordingFilter { it.path.endsWith("keep.aac") }
-        every { repository.getRecordingsList(filter) } returns emptyList()
-
-        viewModel.loadRecordings(filter)
-
-        verify { repository.getRecordingsList(filter) }
-    }
-
-    @Test
-    fun `when reloading recordings then active filter is preserved`() = runTest {
-        val filter = RecordingFilter { it.path.endsWith("keep.aac") }
-        every { repository.getRecordingsList(filter) } returns emptyList()
-
-        viewModel.loadRecordings(filter)
-        viewModel.loadRecordings()
-
-        verify(exactly = 2) { repository.getRecordingsList(filter) }
     }
 
     @Test

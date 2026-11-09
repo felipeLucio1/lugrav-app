@@ -264,7 +264,6 @@ fun LugravScreen(
                         RecordingCard(
                             filePath = recording.path,
                             duration = recording.duration,
-                            createdAtMillis = recording.createdAtMillis,
                             isSelected = selectedFilePath == recording.path,
                             onClick = {
                                 if (selectedFilePath != null) {
