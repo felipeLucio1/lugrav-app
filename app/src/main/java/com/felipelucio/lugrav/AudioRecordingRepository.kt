@@ -94,13 +94,19 @@ class AudioRecordingRepository(
             file.isFile && file.name.endsWith(RecordingFileRules.EXTENSION, ignoreCase = true)
         } ?: return emptyList()
 
-        return files.map { file ->
-            val duration = getAudioDuration(file.absolutePath)
-            AudioRecordingModel(
-                path = file.absolutePath,
-                duration = duration
+        return files
+            .map { file ->
+                val duration = getAudioDuration(file.absolutePath)
+                AudioRecordingModel(
+                    path = file.absolutePath,
+                    duration = duration,
+                    createdAtMillis = file.lastModified().takeIf { it > 0 } ?: 0L
+                )
+            }
+            .sortedWith(
+                compareByDescending<AudioRecordingModel> { it.createdAtMillis }
+                    .thenBy { it.path }
             )
-        }
     }
 
     fun playAudio(filePath: String, onCompletion: () -> Unit = {}) {
