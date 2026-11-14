@@ -13,10 +13,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -33,8 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -133,23 +128,18 @@ fun NewTagDialog(
                     TagColorOptions.forEach { option ->
                         val isSelected = selectedColorHex == option.hex
                         val colorName = stringResource(option.nameRes)
-                        val checkColor = if (option.color.luminance() > 0.5f) {
-                            Color.Black
-                        } else {
-                            Color.White
-                        }
 
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
+                                .size(40.dp)
                                 .clip(CircleShape)
-                                .background(option.color)
+                                .background(option.containerColor)
                                 .border(
                                     width = if (isSelected) 2.dp else 1.dp,
                                     color = if (isSelected) {
-                                        MaterialTheme.colorScheme.onSurface
+                                        option.color
                                     } else {
-                                        MaterialTheme.colorScheme.outline
+                                        MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
                                     },
                                     shape = CircleShape
                                 )
@@ -165,14 +155,12 @@ fun NewTagDialog(
                                 },
                             contentAlignment = Alignment.Center
                         ) {
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Filled.Check,
-                                    contentDescription = null,
-                                    tint = checkColor,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(option.color)
+                            )
                         }
                     }
                 }

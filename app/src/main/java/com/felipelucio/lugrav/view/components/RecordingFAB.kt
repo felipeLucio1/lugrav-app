@@ -14,8 +14,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.felipelucio.lugrav.R
-import com.felipelucio.lugrav.ui.theme.ErrorColor
-import com.felipelucio.lugrav.ui.theme.OnPrimary
 
 @Composable
 fun RecordingFAB(
@@ -27,8 +25,13 @@ fun RecordingFAB(
     ExtendedFloatingActionButton(
         onClick = onClick,
         modifier = modifier.size(height = 56.dp, width = 140.dp),
-        containerColor = if (isRecording) ErrorColor else MaterialTheme.colorScheme.primary,
-        contentColor = OnPrimary
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = if (isRecording) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.primary
+        },
+        contentColor = MaterialTheme.colorScheme.onPrimary
     ) {
         Icon(
             imageVector = if (isRecording) Icons.Filled.Stop else Icons.Filled.Mic,

@@ -63,7 +63,11 @@ fun SelectTagsDialog(
                 }
 
                 tags.isEmpty() -> {
-                    Text(text = stringResource(R.string.select_tags_empty))
+                    Text(
+                        text = stringResource(R.string.select_tags_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 else -> {

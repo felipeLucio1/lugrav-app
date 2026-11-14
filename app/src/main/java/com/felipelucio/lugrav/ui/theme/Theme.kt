@@ -5,7 +5,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -13,36 +12,45 @@ import androidx.core.view.WindowCompat
 private val LightColorScheme = lightColorScheme(
     primary = SkyBlue,
     onPrimary = OnPrimary,
-    primaryContainer = SkyBlue,
+    primaryContainer = SkyBlueContainer,
     onPrimaryContainer = SkyBlueDark,
     secondary = SkyBlueDark,
     onSecondary = OnPrimary,
-    background = SurfaceColor,
-    onBackground = Color(0xFF1C1B1F),
+    secondaryContainer = SkyBlueContainer,
+    onSecondaryContainer = SkyBlueDark,
+    background = BackgroundColor,
+    onBackground = TextPrimary,
     surface = SurfaceColor,
-    onSurface = Color(0xFF1C1B1F),
+    onSurface = TextPrimary,
+    surfaceVariant = CardColor,
+    onSurfaceVariant = TextSecondary,
+    outline = OutlineColor,
     error = ErrorColor,
     onError = OnPrimary
 )
 
 @Composable
-fun LugravTheme(
+fun LugravLightTheme(
     content: @Composable () -> Unit
 ) {
-    val colorScheme = LightColorScheme
     val view = LocalView.current
-    
+
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = SkyBlue.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            window.navigationBarColor = SurfaceColor.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = true
+            }
         }
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = LightColorScheme,
         typography = Typography,
+        shapes = LugravShapes,
         content = content
     )
 }

@@ -2,30 +2,40 @@ package com.felipelucio.lugrav.ui.theme
 
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import com.felipelucio.lugrav.R
 
-const val DEFAULT_TAG_COLOR_HEX = "#FFFFFF"
+const val DEFAULT_TAG_COLOR_HEX = "#475569"
 
 data class TagColorOption(
     @param:StringRes val nameRes: Int,
     val hex: String,
-    val color: Color
+    val color: Color,
+    val containerColor: Color
 )
 
 val TagColorOptions = listOf(
-    TagColorOption(R.string.tag_color_white, "#FFFFFF", Color(0xFFFFFFFF)),
-    TagColorOption(R.string.tag_color_blue, "#29B6F6", Color(0xFF29B6F6)),
-    TagColorOption(R.string.tag_color_dark_blue, "#0D47A1", Color(0xFF0D47A1)),
-    TagColorOption(R.string.tag_color_purple, "#7E57C2", Color(0xFF7E57C2)),
-    TagColorOption(R.string.tag_color_pink, "#EC407A", Color(0xFFEC407A)),
-    TagColorOption(R.string.tag_color_red, "#B3261E", Color(0xFFB3261E)),
-    TagColorOption(R.string.tag_color_orange, "#F57C00", Color(0xFFF57C00)),
-    TagColorOption(R.string.tag_color_amber, "#FFB300", Color(0xFFFFB300)),
-    TagColorOption(R.string.tag_color_green, "#2E7D32", Color(0xFF2E7D32)),
-    TagColorOption(R.string.tag_color_teal, "#00897B", Color(0xFF00897B))
+    TagColorOption(R.string.tag_color_royal_blue, "#2563EB", Color(0xFF2563EB), Color(0xFFEFF6FF)),
+    TagColorOption(R.string.tag_color_amber, "#D97706", Color(0xFFD97706), Color(0xFFFFFBEB)),
+    TagColorOption(R.string.tag_color_emerald, "#059669", Color(0xFF059669), Color(0xFFECFDF5)),
+    TagColorOption(R.string.tag_color_violet, "#7C3AED", Color(0xFF7C3AED), Color(0xFFF5F3FF)),
+    TagColorOption(R.string.tag_color_teal, "#0D9488", Color(0xFF0D9488), Color(0xFFF0FDFA)),
+    TagColorOption(R.string.tag_color_rose, "#E11D48", Color(0xFFE11D48), Color(0xFFFFF1F2)),
+    TagColorOption(R.string.tag_color_sky, "#0284C7", Color(0xFF0284C7), Color(0xFFF0F9FF)),
+    TagColorOption(R.string.tag_color_indigo, "#4F46E5", Color(0xFF4F46E5), Color(0xFFEEF2FF)),
+    TagColorOption(R.string.tag_color_lime, "#65A30D", Color(0xFF65A30D), Color(0xFFF7FEE7)),
+    TagColorOption(R.string.tag_color_slate, DEFAULT_TAG_COLOR_HEX, Slate, Color(0xFFF8FAFC))
 )
 
 fun tagColorFromHex(hex: String): Color =
     runCatching {
         Color(hex.removePrefix("#").toLong(16) or 0xFF000000)
-    }.getOrDefault(Color.White)
+    }.getOrDefault(Slate)
+
+fun tagContainerFromHex(hex: String): Color {
+    val normalizedHex = hex.uppercase()
+    return TagColorOptions
+        .firstOrNull { it.hex.equals(normalizedHex, ignoreCase = true) }
+        ?.containerColor
+        ?: lerp(tagColorFromHex(hex), Color.White, 0.88f)
+}

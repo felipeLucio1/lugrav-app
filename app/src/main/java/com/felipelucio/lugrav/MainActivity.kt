@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.felipelucio.lugrav.ui.theme.LugravTheme
+import com.felipelucio.lugrav.ui.theme.LugravLightTheme
 import com.felipelucio.lugrav.view.LugravScreen
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
         viewModel.loadRecordings()
 
         setContent {
-            LugravTheme {
+            LugravLightTheme {
                 LugravScreen(viewModel = viewModel)
             }
         }
