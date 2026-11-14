@@ -59,4 +59,9 @@
     <string name="select_tags_empty">Nenhuma tag disponível</string>
     <string name="select_tags_success">Tags atualizadas</string>
     <string name="select_tags_error">Erro ao atualizar tags</string>
+    <string name="tag_delete_title">Excluir tag?</string>
+    <string name="tag_delete_message">Deseja excluir a tag %1$s?</string>
+    <string name="tag_delete_success">Tag %1$s excluída com sucesso</string>
+    <string name="tag_delete_error">Erro ao excluir tag</string>
+    <string name="tag_delete_content_description">Excluir tag %1$s</string>
 </resources>

@@ -13,6 +13,9 @@ interface RecordingTagDao {
     @Query("DELETE FROM recording_tags WHERE recordingId = :recordingId")
     suspend fun deleteForRecording(recordingId: Int)
 
+    @Query("DELETE FROM recording_tags WHERE tagId = :tagId")
+    suspend fun deleteForTag(tagId: Int)
+
     @Query("SELECT * FROM recording_tags WHERE recordingId = :recordingId")
     suspend fun getForRecording(recordingId: Int): List<RecordingTagCrossRef>
 }

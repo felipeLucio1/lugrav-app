@@ -28,8 +28,11 @@ import com.felipelucio.lugrav.UserTag
 fun TagCarousel(
     tags: List<UserTag>,
     selectedTagFilters: Set<String>,
+    isTagDeletionMode: Boolean = false,
     onNewTagClick: () -> Unit,
     onTagClick: (String) -> Unit,
+    onTagLongClick: (String) -> Unit = {},
+    onTagDeleteClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LazyRow(
@@ -42,6 +45,7 @@ fun TagCarousel(
             AssistChip(
                 shape = RoundedCornerShape(percent = 50),
                 onClick = onNewTagClick,
+                enabled = !isTagDeletionMode,
                 label = {
                     Text(
                         text = stringResource(R.string.new_tag_button),
@@ -71,7 +75,10 @@ fun TagCarousel(
             TagBadge(
                 tag = tag,
                 isSelected = tag.name in selectedTagFilters,
-                onClick = { onTagClick(tag.name) }
+                isDeletionMode = isTagDeletionMode,
+                onClick = { onTagClick(tag.name) },
+                onLongClick = { onTagLongClick(tag.name) },
+                onDeleteClick = { onTagDeleteClick(tag.name) }
             )
         }
     }

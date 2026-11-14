@@ -68,8 +68,8 @@ class AudioRecordingViewModel(
     private val _createTagResult = MutableStateFlow<Result<UserTag>?>(null)
     val createTagResult: StateFlow<Result<UserTag>?> = _createTagResult
 
-    private val _deleteTagResult = MutableStateFlow<Result<Unit>?>(null)
-    val deleteTagResult: StateFlow<Result<Unit>?> = _deleteTagResult
+    private val _deleteTagResult = MutableStateFlow<Result<String>?>(null)
+    val deleteTagResult: StateFlow<Result<String>?> = _deleteTagResult
 
     private val _setRecordingTagsResult = MutableStateFlow<Result<Unit>?>(null)
     val setRecordingTagsResult: StateFlow<Result<Unit>?> = _setRecordingTagsResult
@@ -127,13 +127,14 @@ class AudioRecordingViewModel(
     fun deleteTag(name: String) {
         viewModelScope.launch {
             try {
+                val normalizedName = TagRules.requireValidName(name)
                 withContext(ioDispatcher) {
-                    repository.deleteTag(name)
+                    repository.deleteTag(normalizedName)
                 }
                 refreshTags()
-                _selectedTagFilters.value = _selectedTagFilters.value - name
+                _selectedTagFilters.value = _selectedTagFilters.value - normalizedName
                 refreshRecordingsBestEffort()
-                _deleteTagResult.value = Result.success(Unit)
+                _deleteTagResult.value = Result.success(normalizedName)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

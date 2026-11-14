@@ -103,9 +103,12 @@ class RoomRecordingTagStore(
     }
 
     override suspend fun deleteTag(name: String) {
-        val existing = tagDao.findByName(name)
-            ?: throw IllegalArgumentException("Tag not found: $name")
-        tagDao.delete(existing)
+        database.withWriteTransaction {
+            val existing = tagDao.findByName(name)
+                ?: throw IllegalArgumentException("Tag not found: $name")
+            recordingTagDao.deleteForTag(existing.id)
+            tagDao.delete(existing)
+        }
     }
 
     override suspend fun setRecordingTags(recordingPath: String, tagNames: Set<String>) {

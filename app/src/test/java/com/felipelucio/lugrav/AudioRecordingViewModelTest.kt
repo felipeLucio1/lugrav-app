@@ -260,9 +260,22 @@ class AudioRecordingViewModelTest {
         viewModel.deleteTag("Trabalho")
 
         assertTrue(viewModel.deleteTagResult.value?.isSuccess == true)
+        assertEquals("Trabalho", viewModel.deleteTagResult.value?.getOrNull())
         assertTrue(viewModel.selectedTagFilters.value.isEmpty())
         coVerify { repository.deleteTag("Trabalho") }
         coVerify { repository.getRecordingsByTags(emptySet()) }
+    }
+
+    @Test
+    fun `when delete tag with surrounding spaces then should return normalized name`() = runTest {
+        coEvery { repository.getTags() } returns emptyList()
+        coEvery { repository.getRecordingsByTags(emptySet()) } returns emptyList()
+
+        viewModel.deleteTag("  Trabalho  ")
+
+        assertTrue(viewModel.deleteTagResult.value?.isSuccess == true)
+        assertEquals("Trabalho", viewModel.deleteTagResult.value?.getOrNull())
+        coVerify { repository.deleteTag("Trabalho") }
     }
 
     @Test

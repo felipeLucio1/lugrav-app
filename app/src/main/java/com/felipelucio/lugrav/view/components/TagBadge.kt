@@ -1,8 +1,10 @@
 package com.felipelucio.lugrav.view.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -10,6 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,11 +34,15 @@ import com.felipelucio.lugrav.ui.theme.Slate
 import com.felipelucio.lugrav.ui.theme.tagColorFromHex
 import com.felipelucio.lugrav.ui.theme.tagContainerFromHex
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TagBadge(
     tag: UserTag,
     isSelected: Boolean = false,
+    isDeletionMode: Boolean = false,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    onDeleteClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val storedColor = remember(tag.colorHex) { tagColorFromHex(tag.colorHex) }
@@ -45,19 +54,25 @@ fun TagBadge(
     } else {
         BorderStroke(1.dp, accentColor.copy(alpha = 0.18f))
     }
-    val interactiveModifier = onClick?.let { clickAction ->
-        val description = stringResource(
-            if (isSelected) {
-                R.string.tag_selected_content_description
-            } else {
-                R.string.tag_not_selected_content_description
-            },
-            tag.name
-        )
+    val description = stringResource(
+        if (isSelected) {
+            R.string.tag_selected_content_description
+        } else {
+            R.string.tag_not_selected_content_description
+        },
+        tag.name
+    )
+    val deleteDescription = stringResource(R.string.tag_delete_content_description, tag.name)
+    val interactiveModifier = if (onClick != null || onLongClick != null) {
         Modifier
-            .clickable(onClick = clickAction)
+            .combinedClickable(
+                onClick = { onClick?.invoke() },
+                onLongClick = if (isDeletionMode) null else onLongClick
+            )
             .semantics { contentDescription = description }
-    } ?: Modifier
+    } else {
+        Modifier
+    }
 
     Surface(
         modifier = modifier
@@ -73,6 +88,23 @@ fun TagBadge(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (isDeletionMode && onDeleteClick != null) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onDeleteClick)
+                        .semantics { contentDescription = deleteDescription },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
             Box(
                 modifier = Modifier
                     .size(7.dp)

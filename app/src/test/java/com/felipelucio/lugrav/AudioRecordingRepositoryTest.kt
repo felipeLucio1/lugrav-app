@@ -729,6 +729,20 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
+    fun `when delete tag then should preserve recording and remove association`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+        repository.createTag("Trabalho", "#29B6F6")
+        repository.setRecordingTags(path, setOf("Trabalho"))
+
+        repository.deleteTag("Trabalho")
+
+        assertTrue(recordingTagStore.recordings.containsKey(path))
+        assertTrue(recordingTagStore.associations[path].isNullOrEmpty())
+        assertTrue(repository.getRecordingsList().any { it.path == path })
+    }
+
+    @Test
     fun `when set recording tags then should replace associations`() = runTest {
         repository.startRecording()
         val path = repository.stopAndSave()

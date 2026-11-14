@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -36,6 +39,7 @@ import androidx.core.content.FileProvider
 import com.felipelucio.lugrav.AudioRecordingViewModel
 import com.felipelucio.lugrav.R
 import com.felipelucio.lugrav.view.components.DeleteConfirmationDialog
+import com.felipelucio.lugrav.view.components.DeleteTagConfirmationDialog
 import com.felipelucio.lugrav.view.components.LugravTopBar
 import com.felipelucio.lugrav.view.components.NewTagDialog
 import com.felipelucio.lugrav.view.components.PermissionRationaleDialog
@@ -75,6 +79,7 @@ fun LugravScreen(
     val isLoadingTags by viewModel.isLoadingTags.collectAsState()
     val selectedTagFilters by viewModel.selectedTagFilters.collectAsState()
     val createTagResult by viewModel.createTagResult.collectAsState()
+    val deleteTagResult by viewModel.deleteTagResult.collectAsState()
     val setRecordingTagsResult by viewModel.setRecordingTagsResult.collectAsState()
 
     val audioPermissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
@@ -90,11 +95,54 @@ fun LugravScreen(
     var showNewTagDialog by remember { mutableStateOf(false) }
     var showTagSelectionDialog by remember { mutableStateOf(false) }
 
+    var isTagDeletionMode by remember { mutableStateOf(false) }
+    var tagPendingDeletionName by remember { mutableStateOf<String?>(null) }
+    var isTagDeletionInProgress by remember { mutableStateOf(false) }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    BackHandler(enabled = selectedFilePath != null) {
+    fun enterTagDeletionMode() {
+        if (isRecording || isTagDeletionMode) return
+        selectedRecording = null
+        viewModel.stopAudio()
+        viewModel.clearSelectedAudio()
         selectedFilePath = null
+        showDeleteDialog = false
+        showRenameDialog = false
+        showNewTagDialog = false
+        showTagSelectionDialog = false
+        tagPendingDeletionName = null
+        isTagDeletionMode = true
+    }
+
+    BackHandler(
+        enabled = tagPendingDeletionName != null ||
+            isTagDeletionMode ||
+            selectedRecording != null ||
+            selectedFilePath != null ||
+            showDeleteDialog ||
+            showRenameDialog ||
+            showNewTagDialog ||
+            showTagSelectionDialog
+    ) {
+        when {
+            tagPendingDeletionName != null -> tagPendingDeletionName = null
+            isTagDeletionMode -> isTagDeletionMode = false
+            showDeleteDialog -> {
+                showDeleteDialog = false
+                selectedFilePath = null
+            }
+            showRenameDialog -> showRenameDialog = false
+            showNewTagDialog -> showNewTagDialog = false
+            showTagSelectionDialog -> showTagSelectionDialog = false
+            selectedRecording != null -> {
+                selectedRecording = null
+                viewModel.stopAudio()
+                viewModel.clearSelectedAudio()
+            }
+            selectedFilePath != null -> selectedFilePath = null
+        }
     }
 
     val savedMessage = stringResource(R.string.recording_saved)
@@ -107,6 +155,7 @@ fun LugravScreen(
     val tagCreateErrorMessage = stringResource(R.string.tag_create_error)
     val tagsUpdateSuccessMessage = stringResource(R.string.select_tags_success)
     val tagsUpdateErrorMessage = stringResource(R.string.select_tags_error)
+    val tagDeleteErrorMessage = stringResource(R.string.tag_delete_error)
 
     fun openAppSettings() {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -185,6 +234,25 @@ fun LugravScreen(
             snackbarHostState.showSnackbar(tagsUpdateSuccessMessage)
         }.onFailure {
             snackbarHostState.showSnackbar(tagsUpdateErrorMessage)
+        }
+    }
+
+    LaunchedEffect(deleteTagResult) {
+        val result = deleteTagResult ?: return@LaunchedEffect
+        viewModel.clearDeleteTagResult()
+        isTagDeletionInProgress = false
+        result.onSuccess { deletedTagName ->
+            isTagDeletionMode = false
+            tagPendingDeletionName = null
+            snackbarHostState.showSnackbar(
+                message = context.getString(R.string.tag_delete_success, deletedTagName),
+                duration = SnackbarDuration.Short
+            )
+        }.onFailure {
+            snackbarHostState.showSnackbar(
+                message = tagDeleteErrorMessage,
+                duration = SnackbarDuration.Short
+            )
         }
     }
 
@@ -276,6 +344,26 @@ fun LugravScreen(
         )
     }
 
+    val pendingTagName = tagPendingDeletionName
+    if (pendingTagName != null) {
+        DeleteTagConfirmationDialog(
+            tagName = pendingTagName,
+            isDeleting = isTagDeletionInProgress,
+            onConfirm = {
+                if (!isTagDeletionInProgress) {
+                    isTagDeletionInProgress = true
+                    tagPendingDeletionName = null
+                    viewModel.deleteTag(pendingTagName)
+                }
+            },
+            onDismiss = {
+                if (!isTagDeletionInProgress) {
+                    tagPendingDeletionName = null
+                }
+            }
+        )
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -305,7 +393,9 @@ fun LugravScreen(
                 isRecording = isRecording,
                 formattedTime = formatTime(recordingTimeSeconds),
                 onClick = {
-                    if (isRecording) {
+                    if (isTagDeletionMode) {
+                        isTagDeletionMode = false
+                    } else if (isRecording) {
                         viewModel.finalizeRecording()
                     } else {
                         if (audioPermissionState.status.isGranted) {
@@ -328,7 +418,14 @@ fun LugravScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .clickable(
+                    enabled = isTagDeletionMode,
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
+                    isTagDeletionMode = false
+                },
             contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -336,8 +433,23 @@ fun LugravScreen(
                 TagCarousel(
                     tags = tags,
                     selectedTagFilters = selectedTagFilters,
-                    onNewTagClick = { showNewTagDialog = true },
-                    onTagClick = { viewModel.toggleTagFilter(it) }
+                    isTagDeletionMode = isTagDeletionMode,
+                    onNewTagClick = {
+                        if (!isTagDeletionMode) {
+                            showNewTagDialog = true
+                        }
+                    },
+                    onTagClick = {
+                        if (!isTagDeletionMode) {
+                            viewModel.toggleTagFilter(it)
+                        }
+                    },
+                    onTagLongClick = { enterTagDeletionMode() },
+                    onTagDeleteClick = { tagName ->
+                        if (!isTagDeletionInProgress) {
+                            tagPendingDeletionName = tagName
+                        }
+                    }
                 )
             }
 
@@ -381,7 +493,9 @@ fun LugravScreen(
                         createdAtMillis = recording.createdAtMillis,
                         isSelected = selectedFilePath == recording.path,
                         onClick = {
-                            if (selectedFilePath != null) {
+                            if (isTagDeletionMode) {
+                                isTagDeletionMode = false
+                            } else if (selectedFilePath != null) {
                                 if (selectedFilePath == recording.path) {
                                     selectedFilePath = null
                                 } else {
@@ -392,7 +506,11 @@ fun LugravScreen(
                             }
                         },
                         onLongPress = {
-                            selectedFilePath = recording.path
+                            if (isTagDeletionMode) {
+                                isTagDeletionMode = false
+                            } else {
+                                selectedFilePath = recording.path
+                            }
                         },
                         tags = recording.tags,
                         modifier = Modifier.padding(horizontal = 16.dp)
