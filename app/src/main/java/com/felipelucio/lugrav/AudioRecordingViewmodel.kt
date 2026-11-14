@@ -35,6 +35,15 @@ class AudioRecordingViewModel(
     private val _isLoadingRecordings = MutableStateFlow(true)
     val isLoadingRecordings: StateFlow<Boolean> = _isLoadingRecordings
 
+    private val _tags = MutableStateFlow<List<UserTag>>(emptyList())
+    val tags: StateFlow<List<UserTag>> = _tags
+
+    private val _isLoadingTags = MutableStateFlow(true)
+    val isLoadingTags: StateFlow<Boolean> = _isLoadingTags
+
+    private val _selectedTagFilters = MutableStateFlow<Set<String>>(emptySet())
+    val selectedTagFilters: StateFlow<Set<String>> = _selectedTagFilters
+
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying
 
@@ -56,12 +65,21 @@ class AudioRecordingViewModel(
     private val _renameResult = MutableStateFlow<Result<Unit>?>(null)
     val renameResult: StateFlow<Result<Unit>?> = _renameResult
 
+    private val _createTagResult = MutableStateFlow<Result<UserTag>?>(null)
+    val createTagResult: StateFlow<Result<UserTag>?> = _createTagResult
+
+    private val _deleteTagResult = MutableStateFlow<Result<Unit>?>(null)
+    val deleteTagResult: StateFlow<Result<Unit>?> = _deleteTagResult
+
+    private val _setRecordingTagsResult = MutableStateFlow<Result<Unit>?>(null)
+    val setRecordingTagsResult: StateFlow<Result<Unit>?> = _setRecordingTagsResult
+
     fun loadRecordings() {
         _isLoadingRecordings.value = true
         viewModelScope.launch {
             try {
                 val recordings = withContext(ioDispatcher) {
-                    repository.getRecordingsList()
+                    repository.getRecordingsList(_selectedTagFilters.value)
                 }
                 _recordingsList.value = recordings
             } catch (e: CancellationException) {
@@ -73,11 +91,153 @@ class AudioRecordingViewModel(
         }
     }
 
+    fun loadTags() {
+        _isLoadingTags.value = true
+        viewModelScope.launch {
+            try {
+                val filtersChanged = refreshTags()
+                if (filtersChanged) {
+                    refreshRecordingsBestEffort()
+                }
+            } finally {
+                _isLoadingTags.value = false
+            }
+        }
+    }
+
+    fun createTag(name: String, colorHex: String) {
+        viewModelScope.launch {
+            try {
+                val tag = withContext(ioDispatcher) {
+                    repository.createTag(name, colorHex)
+                }
+                val filtersChanged = refreshTags()
+                if (filtersChanged) {
+                    refreshRecordingsBestEffort()
+                }
+                _createTagResult.value = Result.success(tag)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _createTagResult.value = Result.failure(e)
+            }
+        }
+    }
+
+    fun deleteTag(name: String) {
+        viewModelScope.launch {
+            try {
+                withContext(ioDispatcher) {
+                    repository.deleteTag(name)
+                }
+                refreshTags()
+                _selectedTagFilters.value = _selectedTagFilters.value - name
+                refreshRecordingsBestEffort()
+                _deleteTagResult.value = Result.success(Unit)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _deleteTagResult.value = Result.failure(e)
+            }
+        }
+    }
+
+    fun setRecordingTags(recordingPath: String, tagNames: Set<String>) {
+        viewModelScope.launch {
+            try {
+                withContext(ioDispatcher) {
+                    repository.setRecordingTags(recordingPath, tagNames)
+                }
+                refreshRecordingsBestEffort()
+                _setRecordingTagsResult.value = Result.success(Unit)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _setRecordingTagsResult.value = Result.failure(e)
+            }
+        }
+    }
+
+    fun toggleTagFilter(tagName: String) {
+        val currentFilters = _selectedTagFilters.value
+        _selectedTagFilters.value = if (tagName in currentFilters) {
+            currentFilters - tagName
+        } else {
+            currentFilters + tagName
+        }
+        reloadRecordingsForFilters()
+    }
+
+    fun setTagFilters(tagNames: Set<String>) {
+        _selectedTagFilters.value = tagNames.toSet()
+        reloadRecordingsForFilters()
+    }
+
+    fun clearTagFilters() {
+        _selectedTagFilters.value = emptySet()
+        reloadRecordingsForFilters()
+    }
+
+    fun clearCreateTagResult() {
+        _createTagResult.value = null
+    }
+
+    fun clearDeleteTagResult() {
+        _deleteTagResult.value = null
+    }
+
+    fun clearSetRecordingTagsResult() {
+        _setRecordingTagsResult.value = null
+    }
+
+    private suspend fun refreshTags(): Boolean {
+        return try {
+            val loadedTags = withContext(ioDispatcher) {
+                repository.getTags()
+            }
+            _tags.value = loadedTags
+
+            val validNames = loadedTags.mapTo(mutableSetOf()) { it.name }
+            val currentFilters = _selectedTagFilters.value
+            val prunedFilters = currentFilters.intersect(validNames)
+            if (prunedFilters != currentFilters) {
+                _selectedTagFilters.value = prunedFilters
+                true
+            } else {
+                false
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun reloadRecordingsForFilters() {
+        viewModelScope.launch {
+            refreshRecordingsBestEffort()
+        }
+    }
+
+    private suspend fun refreshRecordingsBestEffort() {
+        try {
+            val recordings = withContext(ioDispatcher) {
+                repository.getRecordingsByTags(_selectedTagFilters.value)
+            }
+            _recordingsList.value = recordings
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
+    }
+
     fun deleteRecording(filePath: String) {
         viewModelScope.launch {
             fileOperationMutex.withLock {
                 try {
-                    repository.deleteRecording(filePath)
+                    withContext(ioDispatcher) {
+                        repository.deleteRecording(filePath)
+                    }
                     loadRecordings()
                     _deleteResult.value = Result.success(Unit)
                 } catch (e: Exception) {
@@ -98,7 +258,9 @@ class AudioRecordingViewModel(
                     if (_currentPlayingPath.value == filePath) {
                         stopAudio()
                     }
-                    repository.renameRecording(filePath, newName)
+                    withContext(ioDispatcher) {
+                        repository.renameRecording(filePath, newName)
+                    }
                     loadRecordings()
                     _renameResult.value = Result.success(Unit)
                 } catch (e: Exception) {
@@ -132,7 +294,9 @@ class AudioRecordingViewModel(
     fun finalizeRecording() {
         viewModelScope.launch {
             try {
-                val path = repository.stopAndSave()
+                val path = withContext(ioDispatcher) {
+                    repository.stopAndSave()
+                }
                 _isRecording.value = false
                 _recordingTimeSeconds.value = 0
                 _recordingSuccess.value = Result.success(path)

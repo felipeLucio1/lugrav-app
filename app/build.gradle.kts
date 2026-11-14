@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room3)
     alias(libs.plugins.jacoco)
 }
 
@@ -41,6 +43,10 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+room3 {
+    schemaDirectory("$projectDir/schemas")
 }
 
 tasks.register<JacocoReport>("jacocoTestReport") {
@@ -90,6 +96,9 @@ dependencies {
     implementation(libs.material.icons.extended)
     implementation(libs.compose.ui.google.fonts)
     implementation(libs.accompanist.permissions)
+    implementation(libs.androidx.room3.runtime)
+    implementation(libs.androidx.sqlite.framework)
+    ksp(libs.androidx.room3.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -1,5 +1,7 @@
 package com.felipelucio.lugrav
 
+import com.felipelucio.lugrav.data.room.RecordingMetadata
+import com.felipelucio.lugrav.data.room.RecordingTagStore
 import com.felipelucio.lugrav.interfaces.AudioPlayer
 import com.felipelucio.lugrav.interfaces.AudioRecorder
 import com.felipelucio.lugrav.interfaces.FileProvider
@@ -9,10 +11,12 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import io.mockk.verifyOrder
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import java.io.File
@@ -24,6 +28,7 @@ class AudioRecordingRepositoryTest {
     private lateinit var audioRecorder: AudioRecorder
     private lateinit var audioPlayer: AudioPlayer
     private lateinit var metadataRetriever: MetadataRetriever
+    private lateinit var recordingTagStore: FakeRecordingTagStore
     private lateinit var repository: AudioRecordingRepository
     private lateinit var tempCacheDir: File
     private lateinit var tempExternalDir: File
@@ -40,6 +45,7 @@ class AudioRecordingRepositoryTest {
         audioRecorder = mockk(relaxed = true)
         audioPlayer = mockk(relaxed = true)
         metadataRetriever = mockk(relaxed = true)
+        recordingTagStore = FakeRecordingTagStore()
 
         every { fileProvider.getCacheDir() } returns tempCacheDir
         every { fileProvider.getExternalFilesDir() } returns tempExternalDir
@@ -50,7 +56,19 @@ class AudioRecordingRepositoryTest {
             file.createNewFile()
         }
 
-        repository = AudioRecordingRepository(fileProvider, audioRecorder, audioPlayer, metadataRetriever)
+        repository = AudioRecordingRepository(
+            fileProvider,
+            audioRecorder,
+            audioPlayer,
+            metadataRetriever,
+            recordingTagStore
+        )
+    }
+
+    @After
+    fun tearDown() {
+        tempCacheDir.deleteRecursively()
+        tempExternalDir.deleteRecursively()
     }
 
     // ==================== startRecording() Tests ====================
@@ -134,7 +152,7 @@ class AudioRecordingRepositoryTest {
     // ==================== stopAndSave() Tests ====================
 
     @Test
-    fun `when stop and save then should create app folder if not exists`() {
+    fun `when stop and save then should create app folder if not exists`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         if (appFolder.exists()) appFolder.deleteRecursively()
 
@@ -145,7 +163,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when stop and save then should generate file name with correct pattern`() {
+    fun `when stop and save then should generate file name with correct pattern`() = runTest {
         repository.startRecording()
         val filePath = repository.stopAndSave()
         val fileName = File(filePath).name
@@ -155,7 +173,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when stop and save then should write audio bytes to file`() {
+    fun `when stop and save then should write audio bytes to file`() = runTest {
         repository.startRecording()
         val filePath = repository.stopAndSave()
         val file = File(filePath)
@@ -165,7 +183,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when stop and save then should return absolute path of saved file`() {
+    fun `when stop and save then should return absolute path of saved file`() = runTest {
         repository.startRecording()
         val filePath = repository.stopAndSave()
         val file = File(filePath)
@@ -174,10 +192,19 @@ class AudioRecordingRepositoryTest {
         file.delete()
     }
 
+    @Test
+    fun `when stop and save then should persist recording metadata`() = runTest {
+        repository.startRecording()
+        val filePath = repository.stopAndSave()
+
+        assertTrue(recordingTagStore.recordings.containsKey(filePath))
+        assertEquals(filePath, recordingTagStore.recordings.getValue(filePath).path)
+    }
+
     // ==================== getRecordingsList() Tests ====================
 
     @Test
-    fun `when get recordings list and folder not exists then should return empty list`() {
+    fun `when get recordings list and folder not exists then should return empty list`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         if (appFolder.exists()) appFolder.deleteRecursively()
 
@@ -187,7 +214,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when get recordings list then should return list of audio recording models`() {
+    fun `when get recordings list then should return list of audio recording models`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         File(appFolder, "test1.aac").createNewFile()
@@ -199,7 +226,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when get recordings list then should filter only aac files`() {
+    fun `when get recordings list then should filter only aac files`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         File(appFolder, "test.aac").createNewFile()
@@ -212,7 +239,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when get recordings list then should extract duration for each file`() {
+    fun `when get recordings list then should extract duration for each file`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         File(appFolder, "test.aac").createNewFile()
@@ -228,7 +255,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when get recordings list with multiple files then should extract duration for each file`() {
+    fun `when get recordings list with multiple files then should extract duration for each file`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         File(appFolder, "test1.aac").createNewFile()
@@ -243,7 +270,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when duration is 65000 milliseconds then should format as 00_01_05`() {
+    fun `when duration is 65000 milliseconds then should format as 00_01_05`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         File(appFolder, "test.aac").createNewFile()
@@ -255,7 +282,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when get recordings list then should use last modified as created at`() {
+    fun `when get recordings list then should use last modified as created at`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         val file = File(appFolder, "test.aac")
@@ -269,7 +296,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when get recordings list then should sort by last modified descending`() {
+    fun `when get recordings list then should sort by last modified descending`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         val older = File(appFolder, "older.aac").apply {
@@ -288,7 +315,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when recordings have same last modified then should sort by path ascending`() {
+    fun `when recordings have same last modified then should sort by path ascending`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         val sameTimestamp = 1_700_000_000_000L
@@ -305,6 +332,136 @@ class AudioRecordingRepositoryTest {
         val list = repository.getRecordingsList()
 
         assertEquals(listOf(first.absolutePath, second.absolutePath), list.map { it.path })
+    }
+
+    @Test
+    fun `when get recordings list then should sync file metadata with store`() = runTest {
+        val appFolder = File(tempExternalDir, "lugrav")
+        appFolder.mkdirs()
+        val file = File(appFolder, "test.aac").apply {
+            createNewFile()
+            setLastModified(1_700_000_000_000L)
+        }
+        every { metadataRetriever.extractDuration() } returns 10000L
+
+        repository.getRecordingsList()
+
+        assertEquals(1, recordingTagStore.syncedRecordings.size)
+        val metadata = recordingTagStore.syncedRecordings.first()
+        assertEquals(file.absolutePath, metadata.path)
+        assertEquals("00:00:10", metadata.duration)
+        assertEquals(1_700_000_000_000L, metadata.createdAtMillis)
+    }
+
+    @Test
+    fun `when stored recording has no file then sync should remove it`() = runTest {
+        repository.startRecording()
+        val stalePath = repository.stopAndSave()
+        assertTrue(File(stalePath).delete())
+
+        val appFolder = File(tempExternalDir, "lugrav")
+        File(appFolder, "current.aac").createNewFile()
+
+        val list = repository.getRecordingsList()
+
+        assertFalse(recordingTagStore.recordings.containsKey(stalePath))
+        assertEquals(1, list.size)
+    }
+
+    @Test
+    fun `when get recordings list then should return tags from store`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+        val tag = repository.createTag("Trabalho", "#29B6F6")
+        repository.setRecordingTags(path, setOf(tag.name))
+
+        val list = repository.getRecordingsList()
+
+        assertEquals(listOf(tag), list.single { it.path == path }.tags)
+    }
+
+    @Test
+    fun `when filtering recordings by one tag then should return only tagged recordings`() = runTest {
+        val appFolder = File(tempExternalDir, "lugrav")
+        appFolder.mkdirs()
+        val tagged = File(appFolder, "tagged.aac").apply {
+            createNewFile()
+            setLastModified(1_700_000_000_000L)
+        }
+        File(appFolder, "untagged.aac").apply {
+            createNewFile()
+            setLastModified(1_700_000_100_000L)
+        }
+        every { metadataRetriever.extractDuration() } returns 10000L
+
+        repository.getRecordingsList()
+        repository.createTag("Trabalho", "#29B6F6")
+        repository.setRecordingTags(tagged.absolutePath, setOf("Trabalho"))
+
+        val filtered = repository.getRecordingsList(setOf("Trabalho"))
+
+        assertEquals(listOf(tagged.absolutePath), filtered.map { it.path })
+    }
+
+    @Test
+    fun `when filtering recordings by multiple tags then should require all tags`() = runTest {
+        val appFolder = File(tempExternalDir, "lugrav")
+        appFolder.mkdirs()
+        val bothTags = File(appFolder, "both.aac").apply {
+            createNewFile()
+            setLastModified(1_700_000_000_000L)
+        }
+        val onlyWork = File(appFolder, "work.aac").apply {
+            createNewFile()
+            setLastModified(1_700_000_100_000L)
+        }
+        every { metadataRetriever.extractDuration() } returns 10000L
+
+        repository.getRecordingsList()
+        repository.createTag("Trabalho", "#29B6F6")
+        repository.createTag("Importante", "#FF0000")
+        repository.setRecordingTags(bothTags.absolutePath, setOf("Trabalho", "Importante"))
+        repository.setRecordingTags(onlyWork.absolutePath, setOf("Trabalho"))
+
+        val filtered = repository.getRecordingsList(setOf("Trabalho", "Importante"))
+
+        assertEquals(listOf(bothTags.absolutePath), filtered.map { it.path })
+    }
+
+    @Test
+    fun `when filtering recordings by unknown tag then should return empty list`() = runTest {
+        val appFolder = File(tempExternalDir, "lugrav")
+        appFolder.mkdirs()
+        File(appFolder, "test.aac").createNewFile()
+        every { metadataRetriever.extractDuration() } returns 10000L
+
+        repository.getRecordingsList()
+
+        val filtered = repository.getRecordingsList(setOf("Inexistente"))
+
+        assertTrue(filtered.isEmpty())
+    }
+
+    @Test
+    fun `when get recordings by tags then should filter without resyncing files`() = runTest {
+        val appFolder = File(tempExternalDir, "lugrav")
+        appFolder.mkdirs()
+        val tagged = File(appFolder, "tagged.aac").apply {
+            createNewFile()
+            setLastModified(1_700_000_000_000L)
+        }
+        File(appFolder, "untagged.aac").createNewFile()
+        every { metadataRetriever.extractDuration() } returns 10000L
+
+        repository.getRecordingsList()
+        val syncedRecordings = recordingTagStore.syncedRecordings
+        repository.createTag("Trabalho", "#29B6F6")
+        repository.setRecordingTags(tagged.absolutePath, setOf("Trabalho"))
+
+        val filtered = repository.getRecordingsByTags(setOf("Trabalho"))
+
+        assertEquals(listOf(tagged.absolutePath), filtered.map { it.path })
+        assertEquals(syncedRecordings, recordingTagStore.syncedRecordings)
     }
 
     // ==================== playAudio() Tests ====================
@@ -376,7 +533,7 @@ class AudioRecordingRepositoryTest {
     // ==================== deleteRecording() Tests ====================
 
     @Test
-    fun `when delete recording then should stop audio playback first`() {
+    fun `when delete recording then should stop audio playback first`() = runTest {
         val file = File(tempExternalDir, "test_delete.aac")
         file.createNewFile()
         assertTrue(file.exists())
@@ -392,7 +549,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when delete recording then should delete the file`() {
+    fun `when delete recording then should delete the file`() = runTest {
         val file = File(tempExternalDir, "test_delete.aac")
         file.createNewFile()
         assertTrue(file.exists())
@@ -403,28 +560,40 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test(expected = IOException::class)
-    fun `when delete recording with non-existent file then should throw IOException`() {
+    fun `when delete recording with non-existent file then should throw IOException`() = runTest {
         val nonExistentPath = "/non/existent/path/test.aac"
         repository.deleteRecording(nonExistentPath)
     }
 
     @Test(expected = IOException::class)
-    fun `when delete recording fails then should throw IOException`() {
-        val file = mockk<File>(relaxed = true)
-        every { file.exists() } returns true
-        every { file.delete() } returns false
-        every { file.absolutePath } returns "/fake/path/test.aac"
+    fun `when delete recording fails then should throw IOException`() = runTest {
+        val nonEmptyDir = File(tempExternalDir, "non_empty_dir")
+        nonEmptyDir.mkdirs()
+        File(nonEmptyDir, "child.aac").createNewFile()
 
-        repository.deleteRecording("/fake/path/test.aac")
+        repository.deleteRecording(nonEmptyDir.absolutePath)
+    }
+
+    @Test
+    fun `when delete recording succeeds then should remove stored recording`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+
+        repository.deleteRecording(path)
+
+        assertFalse(recordingTagStore.recordings.containsKey(path))
     }
 
     // ==================== renameRecording() Tests ====================
 
     @Test
-    fun `when rename recording then should rename file and preserve content`() {
-        val source = File(tempExternalDir, "original.aac")
+    fun `when rename recording then should rename file and preserve content`() = runTest {
+        val appFolder = File(tempExternalDir, "lugrav")
+        appFolder.mkdirs()
+        val source = File(appFolder, "original.aac")
         val content = byteArrayOf(1, 2, 3, 4, 5)
         source.writeBytes(content)
+        repository.getRecordingsList()
 
         val newPath = repository.renameRecording(source.absolutePath, "Renomeada")
         val renamed = File(newPath)
@@ -436,17 +605,17 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when rename recording with extension then should not duplicate extension`() {
-        val source = File(tempExternalDir, "original.aac")
-        source.writeBytes(byteArrayOf(1))
+    fun `when rename recording with extension then should not duplicate extension`() = runTest {
+        repository.startRecording()
+        val sourcePath = repository.stopAndSave()
 
-        val newPath = repository.renameRecording(source.absolutePath, "Renomeada.aac")
+        val newPath = repository.renameRecording(sourcePath, "Renomeada.aac")
 
         assertEquals("Renomeada.aac", File(newPath).name)
     }
 
     @Test
-    fun `when rename recording to same name then should return same path`() {
+    fun `when rename recording to same name then should return same path`() = runTest {
         val source = File(tempExternalDir, "original.aac")
         source.writeBytes(byteArrayOf(1))
 
@@ -457,7 +626,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test(expected = IOException::class)
-    fun `when rename recording with empty name then should throw IOException`() {
+    fun `when rename recording with empty name then should throw IOException`() = runTest {
         val source = File(tempExternalDir, "original.aac")
         source.createNewFile()
 
@@ -465,7 +634,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test(expected = IOException::class)
-    fun `when rename recording with invalid characters then should throw IOException`() {
+    fun `when rename recording with invalid characters then should throw IOException`() = runTest {
         val source = File(tempExternalDir, "original.aac")
         source.createNewFile()
 
@@ -473,7 +642,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test(expected = IOException::class)
-    fun `when rename recording to existing name then should throw IOException`() {
+    fun `when rename recording to existing name then should throw IOException`() = runTest {
         val source = File(tempExternalDir, "original.aac")
         val target = File(tempExternalDir, "Renomeada.aac")
         source.createNewFile()
@@ -483,8 +652,131 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test(expected = IOException::class)
-    fun `when rename recording non-existent file then should throw IOException`() {
+    fun `when rename recording non-existent file then should throw IOException`() = runTest {
         repository.renameRecording(File(tempExternalDir, "missing.aac").absolutePath, "Renomeada")
+    }
+
+    @Test
+    fun `when rename recording succeeds then should update stored path`() = runTest {
+        repository.startRecording()
+        val sourcePath = repository.stopAndSave()
+
+        val newPath = repository.renameRecording(sourcePath, "Renomeada")
+
+        assertFalse(recordingTagStore.recordings.containsKey(sourcePath))
+        assertTrue(recordingTagStore.recordings.containsKey(newPath))
+    }
+
+    // ==================== Tag Operations Tests ====================
+
+    @Test
+    fun `when create tag then should persist normalized tag`() = runTest {
+        val tag = repository.createTag(" Trabalho ", "#29b6f6")
+
+        assertEquals(UserTag("Trabalho", "#29B6F6"), tag)
+        assertEquals(tag, recordingTagStore.tags["Trabalho"])
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `when create duplicate tag then should fail`() = runTest {
+        repository.createTag("Trabalho", "#29B6F6")
+
+        repository.createTag("Trabalho", "#29B6F6")
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `when create duplicate tag with different case then should fail`() = runTest {
+        repository.createTag("Trabalho", "#29B6F6")
+
+        repository.createTag("  trabalho  ", "#29B6F6")
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `when create tag with invalid color then should fail`() = runTest {
+        repository.createTag("Trabalho", "blue")
+    }
+
+    @Test
+    fun `when get tags then should return stored tags`() = runTest {
+        repository.createTag("Pessoal", "#FF0000")
+        repository.createTag("Trabalho", "#29B6F6")
+
+        val tags = repository.getTags()
+
+        assertEquals(2, tags.size)
+        assertTrue(tags.contains(UserTag("Pessoal", "#FF0000")))
+        assertTrue(tags.contains(UserTag("Trabalho", "#29B6F6")))
+    }
+
+    @Test
+    fun `when update tag then should persist changes`() = runTest {
+        repository.createTag("Trabalho", "#29B6F6")
+
+        val updated = repository.updateTag("Trabalho", "Pessoal", "#ff0000")
+
+        assertEquals(UserTag("Pessoal", "#FF0000"), updated)
+        assertFalse(recordingTagStore.tags.containsKey("Trabalho"))
+        assertEquals(updated, recordingTagStore.tags["Pessoal"])
+    }
+
+    @Test
+    fun `when delete tag then should remove tag`() = runTest {
+        repository.createTag("Trabalho", "#29B6F6")
+
+        repository.deleteTag("Trabalho")
+
+        assertFalse(recordingTagStore.tags.containsKey("Trabalho"))
+    }
+
+    @Test
+    fun `when set recording tags then should replace associations`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+        repository.createTag("Trabalho", "#29B6F6")
+        repository.createTag("Pessoal", "#FF0000")
+        repository.setRecordingTags(path, setOf("Pessoal"))
+
+        repository.setRecordingTags(path, setOf("Trabalho"))
+
+        assertEquals(setOf("Trabalho"), recordingTagStore.associations[path])
+    }
+
+    @Test
+    fun `when set recording tags with empty set then should remove associations`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+        repository.createTag("Trabalho", "#29B6F6")
+        repository.setRecordingTags(path, setOf("Trabalho"))
+
+        repository.setRecordingTags(path, emptySet())
+
+        assertTrue(recordingTagStore.associations[path].isNullOrEmpty())
+    }
+
+    @Test
+    fun `when set recording tags with unknown tag then should keep associations unchanged`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+        repository.createTag("Trabalho", "#29B6F6")
+        repository.setRecordingTags(path, setOf("Trabalho"))
+
+        try {
+            repository.setRecordingTags(path, setOf("Inexistente"))
+        } catch (_: IllegalArgumentException) {
+        }
+
+        assertEquals(setOf("Trabalho"), recordingTagStore.associations[path])
+    }
+
+    @Test
+    fun `when set recording tags then should normalize tag names`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+        repository.createTag("Trabalho", "#29B6F6")
+
+        repository.setRecordingTags(path, setOf("  Trabalho  "))
+
+        assertEquals(setOf("Trabalho"), recordingTagStore.associations[path])
     }
 
     // ==================== getCurrentPosition() and getDuration() Tests ====================
@@ -506,7 +798,7 @@ class AudioRecordingRepositoryTest {
     // ==================== Error Handling Tests ====================
 
     @Test
-    fun `when get audio duration fails then should return default 00_00_00`() {
+    fun `when get audio duration fails then should return default 00_00_00`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         File(appFolder, "test.aac").createNewFile()
@@ -519,7 +811,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when set data source fails then should return default and release retriever`() {
+    fun `when set data source fails then should return default and release retriever`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         File(appFolder, "test.aac").createNewFile()
@@ -532,7 +824,7 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when extract duration returns null then should return default 00_00_00`() {
+    fun `when extract duration returns null then should return default 00_00_00`() = runTest {
         val appFolder = File(tempExternalDir, "lugrav")
         appFolder.mkdirs()
         File(appFolder, "test.aac").createNewFile()
@@ -545,9 +837,104 @@ class AudioRecordingRepositoryTest {
     }
 
     @Test
-    fun `when get recordings list with null file array then should return empty list`() {
+    fun `when get recordings list with null file array then should return empty list`() = runTest {
         every { fileProvider.getExternalFilesDir() } returns null
         val list = repository.getRecordingsList()
         assertTrue(list.isEmpty())
+    }
+}
+
+private class FakeRecordingTagStore : RecordingTagStore {
+
+    val recordings = linkedMapOf<String, RecordingMetadata>()
+    val tags = linkedMapOf<String, UserTag>()
+    val associations = mutableMapOf<String, MutableSet<String>>()
+    var syncedRecordings: List<RecordingMetadata> = emptyList()
+
+    override suspend fun syncRecordings(recordings: List<RecordingMetadata>) {
+        syncedRecordings = recordings
+        val incoming = recordings.associateBy { it.path }
+        this.recordings.keys.retainAll(incoming.keys)
+        this.recordings.putAll(incoming)
+    }
+
+    override suspend fun getRecordings(tagNames: Set<String>): List<AudioRecordingModel> =
+        recordings.values
+            .filter { metadata ->
+                tagNames.isEmpty() || tagNames.all { tagName ->
+                    associations[metadata.path].orEmpty().contains(tagName)
+                }
+            }
+            .map { metadata ->
+                AudioRecordingModel(
+                    path = metadata.path,
+                    duration = metadata.duration,
+                    createdAtMillis = metadata.createdAtMillis,
+                    tags = associations[metadata.path].orEmpty().mapNotNull { tags[it] }
+                )
+            }
+
+    override suspend fun insertRecording(recording: RecordingMetadata) {
+        recordings[recording.path] = recording
+    }
+
+    override suspend fun updateRecordingPath(oldPath: String, newPath: String) {
+        val metadata = recordings.remove(oldPath)
+            ?: throw IllegalArgumentException("Recording not found: $oldPath")
+        recordings[newPath] = metadata.copy(path = newPath)
+        associations.remove(oldPath)?.let { associations[newPath] = it }
+    }
+
+    override suspend fun deleteRecording(path: String) {
+        recordings.remove(path)
+        associations.remove(path)
+    }
+
+    override suspend fun createTag(name: String, colorHex: String): UserTag {
+        require(tags[name] == null) { "Tag already exists: $name" }
+        val tag = UserTag(name, colorHex)
+        tags[name] = tag
+        return tag
+    }
+
+    override suspend fun getTags(): List<UserTag> = tags.values.toList()
+
+    override suspend fun updateTag(
+        currentName: String,
+        newName: String,
+        colorHex: String
+    ): UserTag {
+        if (newName != currentName) {
+            require(tags[newName] == null) { "Tag already exists: $newName" }
+        }
+        val existing = tags.remove(currentName)
+            ?: throw IllegalArgumentException("Tag not found: $currentName")
+        val updated = existing.copy(name = newName, colorHex = colorHex)
+        tags[newName] = updated
+        associations.values.forEach { names ->
+            if (names.remove(currentName)) {
+                names.add(newName)
+            }
+        }
+        return updated
+    }
+
+    override suspend fun deleteTag(name: String) {
+        tags.remove(name)
+        associations.values.forEach { it.remove(name) }
+    }
+
+    override suspend fun setRecordingTags(recordingPath: String, tagNames: Set<String>) {
+        require(recordings.containsKey(recordingPath)) {
+            "Recording not found: $recordingPath"
+        }
+        val missing = tagNames.filterNot { tags.containsKey(it) }
+        require(missing.isEmpty()) { "Tag not found: ${missing.first()}" }
+
+        if (tagNames.isEmpty()) {
+            associations.remove(recordingPath)
+        } else {
+            associations[recordingPath] = tagNames.toMutableSet()
+        }
     }
 }
