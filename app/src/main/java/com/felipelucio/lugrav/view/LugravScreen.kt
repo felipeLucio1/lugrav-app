@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -34,11 +35,14 @@ import com.felipelucio.lugrav.AudioRecordingViewModel
 import com.felipelucio.lugrav.R
 import com.felipelucio.lugrav.view.components.DeleteConfirmationDialog
 import com.felipelucio.lugrav.view.components.LugravTopBar
+import com.felipelucio.lugrav.view.components.NewTagDialog
 import com.felipelucio.lugrav.view.components.PermissionRationaleDialog
 import com.felipelucio.lugrav.view.components.RenameRecordingDialog
 import com.felipelucio.lugrav.view.components.RecordingBottomSheet
 import com.felipelucio.lugrav.view.components.RecordingCard
 import com.felipelucio.lugrav.view.components.RecordingFAB
+import com.felipelucio.lugrav.view.components.SelectTagsDialog
+import com.felipelucio.lugrav.view.components.TagCarousel
 import com.felipelucio.lugrav.view.components.formatTime
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -53,30 +57,37 @@ fun LugravScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    
+
     val isRecording by viewModel.isRecording.collectAsState()
     val recordingTimeSeconds by viewModel.recordingTimeSeconds.collectAsState()
     val recordingsList by viewModel.recordingsList.collectAsState()
     val recordingSuccess by viewModel.recordingSuccess.collectAsState()
-    
+
     val isPlaying by viewModel.isPlaying.collectAsState()
     val playbackTimeFormatted by viewModel.playbackTimeFormatted.collectAsState()
     val currentPlayingPath by viewModel.currentPlayingPath.collectAsState()
-    
+
     val deleteResult by viewModel.deleteResult.collectAsState()
     val renameResult by viewModel.renameResult.collectAsState()
-    
+    val tags by viewModel.tags.collectAsState()
+    val isLoadingTags by viewModel.isLoadingTags.collectAsState()
+    val selectedTagFilters by viewModel.selectedTagFilters.collectAsState()
+    val createTagResult by viewModel.createTagResult.collectAsState()
+    val setRecordingTagsResult by viewModel.setRecordingTagsResult.collectAsState()
+
     val audioPermissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
-    
+
     var hasAttemptedPermissionRequest by remember { mutableStateOf(false) }
     var showRationaleDialog by remember { mutableStateOf(false) }
-    
+
     var selectedRecording by remember { mutableStateOf<String?>(null) }
-    
+
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
-    
+    var showNewTagDialog by remember { mutableStateOf(false) }
+    var showTagSelectionDialog by remember { mutableStateOf(false) }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -90,14 +101,18 @@ fun LugravScreen(
     val deleteErrorMessage = stringResource(R.string.delete_error)
     val renameSuccessMessage = stringResource(R.string.rename_success)
     val renameErrorMessage = stringResource(R.string.rename_error)
-    
+    val tagCreateSuccessMessage = stringResource(R.string.tag_create_success)
+    val tagCreateErrorMessage = stringResource(R.string.tag_create_error)
+    val tagsUpdateSuccessMessage = stringResource(R.string.select_tags_success)
+    val tagsUpdateErrorMessage = stringResource(R.string.select_tags_error)
+
     fun openAppSettings() {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.fromParts("package", context.packageName, null)
         }
         context.startActivity(intent)
     }
-    
+
     fun shareRecording(filePath: String) {
         val file = File(filePath)
         val contentUri = FileProvider.getUriForFile(
@@ -105,17 +120,17 @@ fun LugravScreen(
             "${context.packageName}.fileprovider",
             file
         )
-        
+
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "audio/aac"
             putExtra(Intent.EXTRA_STREAM, contentUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        
+
         context.startActivity(Intent.createChooser(shareIntent, null))
         selectedFilePath = null
     }
-    
+
     LaunchedEffect(recordingSuccess) {
         recordingSuccess?.let { result ->
             result.onSuccess {
@@ -125,7 +140,7 @@ fun LugravScreen(
             }
         }
     }
-    
+
     LaunchedEffect(deleteResult) {
         deleteResult?.let { result ->
             result.onFailure {
@@ -134,7 +149,7 @@ fun LugravScreen(
             viewModel.clearDeleteResult()
         }
     }
-    
+
     LaunchedEffect(renameResult) {
         val result = renameResult ?: return@LaunchedEffect
         viewModel.clearRenameResult()
@@ -146,9 +161,34 @@ fun LugravScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.loadTags()
+    }
+
+    LaunchedEffect(createTagResult) {
+        val result = createTagResult ?: return@LaunchedEffect
+        viewModel.clearCreateTagResult()
+        result.onSuccess {
+            snackbarHostState.showSnackbar(tagCreateSuccessMessage)
+        }.onFailure {
+            snackbarHostState.showSnackbar(tagCreateErrorMessage)
+        }
+    }
+
+    LaunchedEffect(setRecordingTagsResult) {
+        val result = setRecordingTagsResult ?: return@LaunchedEffect
+        viewModel.clearSetRecordingTagsResult()
+        result.onSuccess {
+            selectedFilePath = null
+            snackbarHostState.showSnackbar(tagsUpdateSuccessMessage)
+        }.onFailure {
+            snackbarHostState.showSnackbar(tagsUpdateErrorMessage)
+        }
+    }
+
     if (showRationaleDialog) {
         PermissionRationaleDialog(
-            onDismiss = { 
+            onDismiss = {
                 showRationaleDialog = false
                 scope.launch {
                     snackbarHostState.showSnackbar(permissionDeniedMessage)
@@ -160,7 +200,7 @@ fun LugravScreen(
             }
         )
     }
-    
+
     if (selectedRecording != null) {
         val isCurrentAudioPlaying = isPlaying && currentPlayingPath == selectedRecording
         RecordingBottomSheet(
@@ -168,14 +208,14 @@ fun LugravScreen(
             isPlaying = isCurrentAudioPlaying,
             playbackTime = playbackTimeFormatted,
             onPlayPauseClick = { viewModel.togglePlayPause(selectedRecording!!) },
-            onDismiss = { 
+            onDismiss = {
                 selectedRecording = null
                 viewModel.stopAudio()
                 viewModel.clearSelectedAudio()
             }
         )
     }
-    
+
     if (showDeleteDialog && selectedFilePath != null) {
         DeleteConfirmationDialog(
             onConfirm = {
@@ -189,7 +229,7 @@ fun LugravScreen(
             }
         )
     }
-    
+
     val renameFilePath = selectedFilePath
     if (showRenameDialog && renameFilePath != null) {
         RenameRecordingDialog(
@@ -202,17 +242,55 @@ fun LugravScreen(
         )
     }
 
+    if (showNewTagDialog) {
+        NewTagDialog(
+            existingTags = tags,
+            onConfirm = { name, colorHex ->
+                viewModel.createTag(name, colorHex)
+                showNewTagDialog = false
+            },
+            onDismiss = { showNewTagDialog = false }
+        )
+    }
+
+    val tagDialogRecording = recordingsList.firstOrNull {
+        it.path == selectedFilePath
+    }
+    if (showTagSelectionDialog && tagDialogRecording != null) {
+        val initiallySelectedTagNames = tagDialogRecording.tags
+            .mapTo(mutableSetOf()) { it.name }
+        SelectTagsDialog(
+            tags = tags,
+            initiallySelectedTagNames = initiallySelectedTagNames,
+            isLoading = isLoadingTags,
+            onConfirm = { selectedTagNames ->
+                viewModel.setRecordingTags(
+                    recordingPath = tagDialogRecording.path,
+                    tagNames = selectedTagNames
+                )
+                showTagSelectionDialog = false
+            },
+            onDismiss = { showTagSelectionDialog = false }
+        )
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { 
+        topBar = {
             LugravTopBar(
                 isSelectionMode = selectedFilePath != null,
-                onClearSelection = { selectedFilePath = null },
+                onClearSelection = {
+                    selectedFilePath = null
+                    showTagSelectionDialog = false
+                },
                 onShareClick = if (selectedFilePath != null) {
                     { shareRecording(selectedFilePath!!) }
                 } else null,
                 onRenameClick = if (selectedFilePath != null) {
                     { showRenameDialog = true }
+                } else null,
+                onSelectTagsClick = if (selectedFilePath != null) {
+                    { showTagSelectionDialog = true }
                 } else null,
                 onDeleteClick = if (selectedFilePath != null) {
                     { showDeleteDialog = true }
@@ -245,43 +323,57 @@ fun LugravScreen(
             )
         }
     ) { innerPadding ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (recordingsList.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.recordings_not_found),
-                    modifier = Modifier.align(Alignment.Center)
+            item(key = "tag_carousel") {
+                TagCarousel(
+                    tags = tags,
+                    selectedTagFilters = selectedTagFilters,
+                    onNewTagClick = { showNewTagDialog = true },
+                    onTagClick = { viewModel.toggleTagFilter(it) }
                 )
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    itemsIndexed(recordingsList) { _, recording ->
-                        RecordingCard(
-                            filePath = recording.path,
-                            duration = recording.duration,
-                            createdAtMillis = recording.createdAtMillis,
-                            isSelected = selectedFilePath == recording.path,
-                            onClick = {
-                                if (selectedFilePath != null) {
-                                    if (selectedFilePath == recording.path) {
-                                        selectedFilePath = null
-                                    } else {
-                                        selectedFilePath = recording.path
-                                    }
-                                } else {
-                                    selectedRecording = recording.path
-                                }
-                            },
-                            onLongPress = {
-                                selectedFilePath = recording.path
-                            }
-                        )
+            }
+
+            if (recordingsList.isEmpty()) {
+                item(key = "empty_state") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = stringResource(R.string.recordings_not_found))
                     }
+                }
+            } else {
+                itemsIndexed(recordingsList) { _, recording ->
+                    RecordingCard(
+                        filePath = recording.path,
+                        duration = recording.duration,
+                        createdAtMillis = recording.createdAtMillis,
+                        isSelected = selectedFilePath == recording.path,
+                        onClick = {
+                            if (selectedFilePath != null) {
+                                if (selectedFilePath == recording.path) {
+                                    selectedFilePath = null
+                                } else {
+                                    selectedFilePath = recording.path
+                                }
+                            } else {
+                                selectedRecording = recording.path
+                            }
+                        },
+                        onLongPress = {
+                            selectedFilePath = recording.path
+                        },
+                        tags = recording.tags,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
                 }
             }
         }
