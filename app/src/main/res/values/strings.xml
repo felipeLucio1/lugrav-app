@@ -7,6 +7,12 @@
     <string name="recording_in_progress">Gravação em andamento</string>
     <string name="recording_saved">Gravação salva com sucesso</string>
     <string name="recording_error">Erro ao salvar gravação</string>
+    <string name="recording_review_title">Salvar gravação</string>
+    <string name="recording_review_tags_label">Tags</string>
+    <string name="recording_review_save">Salvar</string>
+    <string name="recording_review_discard">Descartar</string>
+    <string name="recording_discarded">Gravação descartada</string>
+    <string name="recording_review_error">Erro ao concluir gravação</string>
     <string name="permission_denied">Permissão de microfone não concedida. Não é possível gravar.</string>
     <string name="permission_microphone_rationale">O microfone é necessário para gravar áudios.</string>
     <string name="time_format">%02d:%02d:%02d</string>

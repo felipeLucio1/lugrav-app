@@ -667,6 +667,76 @@ class AudioRecordingRepositoryTest {
         assertTrue(recordingTagStore.recordings.containsKey(newPath))
     }
 
+    // ==================== saveRecordingReview() Tests ====================
+
+    @Test
+    fun `when save review with same name then should keep file and set tags`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+        repository.createTag("Trabalho", "#29B6F6")
+
+        val result = repository.saveRecordingReview(
+            filePath = path,
+            newName = File(path).nameWithoutExtension,
+            tagNames = setOf("Trabalho")
+        )
+
+        assertEquals(path, result)
+        assertTrue(File(path).exists())
+        assertEquals(setOf("Trabalho"), recordingTagStore.associations[path])
+    }
+
+    @Test
+    fun `when save review with new name then should rename file and set tags`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+        repository.createTag("Trabalho", "#29B6F6")
+
+        val result = repository.saveRecordingReview(
+            filePath = path,
+            newName = "Revisada",
+            tagNames = setOf("Trabalho")
+        )
+
+        assertEquals("Revisada.aac", File(result).name)
+        assertFalse(File(path).exists())
+        assertTrue(File(result).exists())
+        assertEquals(setOf("Trabalho"), recordingTagStore.associations[result])
+    }
+
+    @Test
+    fun `when save review without tags then should keep associations empty`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+
+        val result = repository.saveRecordingReview(
+            filePath = path,
+            newName = "Revisada",
+            tagNames = emptySet()
+        )
+
+        assertTrue(recordingTagStore.associations[result].isNullOrEmpty())
+    }
+
+    @Test
+    fun `when save review fails to set tags then should rollback rename`() = runTest {
+        repository.startRecording()
+        val path = repository.stopAndSave()
+
+        val result = runCatching {
+            repository.saveRecordingReview(
+                filePath = path,
+                newName = "Revisada",
+                tagNames = setOf("Inexistente")
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertTrue(File(path).exists())
+        assertFalse(File(File(path).parentFile, "Revisada.aac").exists())
+        assertTrue(recordingTagStore.recordings.containsKey(path))
+    }
+
     // ==================== Tag Operations Tests ====================
 
     @Test

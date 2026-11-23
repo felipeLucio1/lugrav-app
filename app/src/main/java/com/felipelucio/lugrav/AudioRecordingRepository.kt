@@ -206,6 +206,42 @@ class AudioRecordingRepository(
         return target.absolutePath
     }
 
+    @Throws(IOException::class)
+    suspend fun saveRecordingReview(
+        filePath: String,
+        newName: String,
+        tagNames: Set<String>
+    ): String {
+        val source = File(filePath)
+        if (!source.exists()) {
+            throw IOException("File does not exist: $filePath")
+        }
+
+        if (!RecordingFileRules.isValidRecordingName(newName)) {
+            throw IOException("Invalid file name: $newName")
+        }
+
+        val originalPath = source.absolutePath
+        val originalName = source.nameWithoutExtension
+        val normalizedName = RecordingFileRules.normalizeName(newName)
+        val finalPath = if (normalizedName == originalName) {
+            originalPath
+        } else {
+            renameRecording(originalPath, newName)
+        }
+
+        try {
+            setRecordingTags(finalPath, tagNames)
+        } catch (e: Exception) {
+            if (finalPath != originalPath) {
+                runCatching { renameRecording(finalPath, originalName) }
+            }
+            throw e
+        }
+
+        return finalPath
+    }
+
     suspend fun createTag(name: String, colorHex: String): UserTag {
         val normalizedName = TagRules.requireValidName(name)
         val normalizedColor = TagRules.requireValidColor(colorHex)

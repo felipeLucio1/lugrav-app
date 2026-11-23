@@ -399,4 +399,139 @@ class AudioRecordingViewModelTest {
 
         assertNull(viewModel.setRecordingTagsResult.value)
     }
+
+    @Test
+    fun `when finalize succeeds then should expose review path without reloading`() = runTest {
+        coEvery { repository.stopAndSave() } returns "recording.aac"
+
+        viewModel.finalizeRecording()
+
+        assertEquals("recording.aac", viewModel.recordingReviewPath.value)
+        assertFalse(viewModel.isRecording.value)
+        assertNull(viewModel.recordingSuccess.value)
+        coVerify(exactly = 0) { repository.getRecordingsList(any()) }
+    }
+
+    @Test
+    fun `when finalize fails then should not expose review path`() = runTest {
+        coEvery { repository.stopAndSave() } throws IOException("fail")
+
+        viewModel.finalizeRecording()
+
+        assertNull(viewModel.recordingReviewPath.value)
+        assertTrue(viewModel.recordingSuccess.value?.isFailure == true)
+    }
+
+    @Test
+    fun `when save review with same name then should clear review and reload`() = runTest {
+        coEvery { repository.stopAndSave() } returns "recording.aac"
+        coEvery {
+            repository.saveRecordingReview("recording.aac", "recording", emptySet())
+        } returns "recording.aac"
+        coEvery { repository.getRecordingsList(emptySet()) } returns emptyList()
+        viewModel.finalizeRecording()
+
+        viewModel.saveRecordingReview("recording", emptySet())
+
+        assertNull(viewModel.recordingReviewPath.value)
+        assertEquals(
+            RecordingReviewOutcome.SAVED,
+            viewModel.recordingReviewResult.value?.getOrNull()
+        )
+        coVerify {
+            repository.saveRecordingReview("recording.aac", "recording", emptySet())
+        }
+        coVerify { repository.getRecordingsList(emptySet()) }
+    }
+
+    @Test
+    fun `when save review with new name and tags then should clear review and reload`() = runTest {
+        coEvery { repository.stopAndSave() } returns "recording.aac"
+        coEvery {
+            repository.saveRecordingReview("recording.aac", "Revisada", setOf("Trabalho"))
+        } returns "Revisada.aac"
+        coEvery { repository.getRecordingsList(emptySet()) } returns emptyList()
+        viewModel.finalizeRecording()
+
+        viewModel.saveRecordingReview("Revisada", setOf("Trabalho"))
+
+        assertNull(viewModel.recordingReviewPath.value)
+        assertEquals(
+            RecordingReviewOutcome.SAVED,
+            viewModel.recordingReviewResult.value?.getOrNull()
+        )
+        coVerify {
+            repository.saveRecordingReview("recording.aac", "Revisada", setOf("Trabalho"))
+        }
+        coVerify { repository.getRecordingsList(emptySet()) }
+    }
+
+    @Test
+    fun `when save review with invalid name then should keep review and not call repository`() = runTest {
+        coEvery { repository.stopAndSave() } returns "recording.aac"
+        viewModel.finalizeRecording()
+
+        viewModel.saveRecordingReview(" ", emptySet())
+
+        assertEquals("recording.aac", viewModel.recordingReviewPath.value)
+        assertTrue(viewModel.recordingReviewResult.value?.isFailure == true)
+        coVerify(exactly = 0) { repository.saveRecordingReview(any(), any(), any()) }
+    }
+
+    @Test
+    fun `when save review fails then should keep review open`() = runTest {
+        coEvery { repository.stopAndSave() } returns "recording.aac"
+        coEvery { repository.saveRecordingReview(any(), any(), any()) } throws IOException("fail")
+        viewModel.finalizeRecording()
+
+        viewModel.saveRecordingReview("Revisada", setOf("Trabalho"))
+
+        assertEquals("recording.aac", viewModel.recordingReviewPath.value)
+        assertTrue(viewModel.recordingReviewResult.value?.isFailure == true)
+        coVerify(exactly = 0) { repository.getRecordingsList(any()) }
+    }
+
+    @Test
+    fun `when discard review succeeds then should clear review and reload`() = runTest {
+        coEvery { repository.stopAndSave() } returns "recording.aac"
+        coEvery { repository.getRecordingsList(emptySet()) } returns emptyList()
+        viewModel.finalizeRecording()
+
+        viewModel.discardRecordingReview()
+
+        assertNull(viewModel.recordingReviewPath.value)
+        assertEquals(
+            RecordingReviewOutcome.DISCARDED,
+            viewModel.recordingReviewResult.value?.getOrNull()
+        )
+        coVerify { repository.deleteRecording("recording.aac") }
+        coVerify { repository.getRecordingsList(emptySet()) }
+    }
+
+    @Test
+    fun `when discard review fails then should keep review open`() = runTest {
+        coEvery { repository.stopAndSave() } returns "recording.aac"
+        coEvery { repository.deleteRecording("recording.aac") } throws IOException("fail")
+        viewModel.finalizeRecording()
+
+        viewModel.discardRecordingReview()
+
+        assertEquals("recording.aac", viewModel.recordingReviewPath.value)
+        assertTrue(viewModel.recordingReviewResult.value?.isFailure == true)
+        coVerify(exactly = 0) { repository.getRecordingsList(any()) }
+    }
+
+    @Test
+    fun `when keep review then should close review and reload without changes`() = runTest {
+        coEvery { repository.stopAndSave() } returns "recording.aac"
+        coEvery { repository.getRecordingsList(emptySet()) } returns emptyList()
+        viewModel.finalizeRecording()
+
+        viewModel.keepRecordingReview()
+
+        assertNull(viewModel.recordingReviewPath.value)
+        coVerify(exactly = 0) { repository.saveRecordingReview(any(), any(), any()) }
+        coVerify(exactly = 0) { repository.deleteRecording(any()) }
+        coVerify { repository.getRecordingsList(emptySet()) }
+    }
 }

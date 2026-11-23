@@ -15,6 +15,11 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
+enum class RecordingReviewOutcome {
+    SAVED,
+    DISCARDED
+}
+
 class AudioRecordingViewModel(
     private val repository: AudioRecordingRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
@@ -73,6 +78,15 @@ class AudioRecordingViewModel(
 
     private val _setRecordingTagsResult = MutableStateFlow<Result<Unit>?>(null)
     val setRecordingTagsResult: StateFlow<Result<Unit>?> = _setRecordingTagsResult
+
+    private val _recordingReviewPath = MutableStateFlow<String?>(null)
+    val recordingReviewPath: StateFlow<String?> = _recordingReviewPath
+
+    private val _isRecordingReviewInProgress = MutableStateFlow(false)
+    val isRecordingReviewInProgress: StateFlow<Boolean> = _isRecordingReviewInProgress
+
+    private val _recordingReviewResult = MutableStateFlow<Result<RecordingReviewOutcome>?>(null)
+    val recordingReviewResult: StateFlow<Result<RecordingReviewOutcome>?> = _recordingReviewResult
 
     fun loadRecordings() {
         _isLoadingRecordings.value = true
@@ -191,6 +205,73 @@ class AudioRecordingViewModel(
         _setRecordingTagsResult.value = null
     }
 
+    fun saveRecordingReview(name: String, tagNames: Set<String>) {
+        if (_isRecordingReviewInProgress.value) return
+        val path = _recordingReviewPath.value ?: return
+        if (!RecordingFileRules.isValidRecordingName(name)) {
+            _recordingReviewResult.value = Result.failure(
+                IllegalArgumentException("Invalid file name: $name")
+            )
+            return
+        }
+
+        viewModelScope.launch {
+            fileOperationMutex.withLock {
+                _isRecordingReviewInProgress.value = true
+                try {
+                    withContext(ioDispatcher) {
+                        repository.saveRecordingReview(path, name, tagNames)
+                    }
+                    _recordingReviewPath.value = null
+                    _recordingReviewResult.value = Result.success(RecordingReviewOutcome.SAVED)
+                    loadRecordings()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _recordingReviewResult.value = Result.failure(e)
+                } finally {
+                    _isRecordingReviewInProgress.value = false
+                }
+            }
+        }
+    }
+
+    fun discardRecordingReview() {
+        if (_isRecordingReviewInProgress.value) return
+        val path = _recordingReviewPath.value ?: return
+
+        viewModelScope.launch {
+            fileOperationMutex.withLock {
+                _isRecordingReviewInProgress.value = true
+                try {
+                    withContext(ioDispatcher) {
+                        repository.deleteRecording(path)
+                    }
+                    _recordingReviewPath.value = null
+                    _recordingReviewResult.value = Result.success(RecordingReviewOutcome.DISCARDED)
+                    loadRecordings()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _recordingReviewResult.value = Result.failure(e)
+                } finally {
+                    _isRecordingReviewInProgress.value = false
+                }
+            }
+        }
+    }
+
+    fun keepRecordingReview() {
+        if (_isRecordingReviewInProgress.value) return
+        if (_recordingReviewPath.value == null) return
+        _recordingReviewPath.value = null
+        loadRecordings()
+    }
+
+    fun clearRecordingReviewResult() {
+        _recordingReviewResult.value = null
+    }
+
     private suspend fun refreshTags(): Boolean {
         return try {
             val loadedTags = withContext(ioDispatcher) {
@@ -294,14 +375,16 @@ class AudioRecordingViewModel(
 
     fun finalizeRecording() {
         viewModelScope.launch {
+            _recordingReviewPath.value = null
+            _recordingReviewResult.value = null
             try {
                 val path = withContext(ioDispatcher) {
                     repository.stopAndSave()
                 }
                 _isRecording.value = false
                 _recordingTimeSeconds.value = 0
-                _recordingSuccess.value = Result.success(path)
-                loadRecordings()
+                _recordingSuccess.value = null
+                _recordingReviewPath.value = path
             } catch (e: Exception) {
                 _isRecording.value = false
                 _recordingTimeSeconds.value = 0

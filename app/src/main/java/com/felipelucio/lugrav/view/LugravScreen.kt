@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.felipelucio.lugrav.AudioRecordingViewModel
 import com.felipelucio.lugrav.R
+import com.felipelucio.lugrav.RecordingReviewOutcome
 import com.felipelucio.lugrav.view.components.DeleteConfirmationDialog
 import com.felipelucio.lugrav.view.components.DeleteTagConfirmationDialog
 import com.felipelucio.lugrav.view.components.LugravTopBar
@@ -45,6 +46,7 @@ import com.felipelucio.lugrav.view.components.NewTagDialog
 import com.felipelucio.lugrav.view.components.PermissionRationaleDialog
 import com.felipelucio.lugrav.view.components.RenameRecordingDialog
 import com.felipelucio.lugrav.view.components.RecordingBottomSheet
+import com.felipelucio.lugrav.view.components.RecordingReviewDialog
 import com.felipelucio.lugrav.view.components.RecordingCard
 import com.felipelucio.lugrav.view.components.RecordingFAB
 import com.felipelucio.lugrav.view.components.SelectTagsDialog
@@ -68,6 +70,9 @@ fun LugravScreen(
     val recordingTimeSeconds by viewModel.recordingTimeSeconds.collectAsState()
     val recordingsList by viewModel.recordingsList.collectAsState()
     val recordingSuccess by viewModel.recordingSuccess.collectAsState()
+    val recordingReviewPath by viewModel.recordingReviewPath.collectAsState()
+    val isRecordingReviewInProgress by viewModel.isRecordingReviewInProgress.collectAsState()
+    val recordingReviewResult by viewModel.recordingReviewResult.collectAsState()
 
     val isPlaying by viewModel.isPlaying.collectAsState()
     val playbackTimeFormatted by viewModel.playbackTimeFormatted.collectAsState()
@@ -117,7 +122,8 @@ fun LugravScreen(
     }
 
     BackHandler(
-        enabled = tagPendingDeletionName != null ||
+        enabled = recordingReviewPath != null ||
+            tagPendingDeletionName != null ||
             isTagDeletionMode ||
             selectedRecording != null ||
             selectedFilePath != null ||
@@ -127,6 +133,7 @@ fun LugravScreen(
             showTagSelectionDialog
     ) {
         when {
+            recordingReviewPath != null -> viewModel.keepRecordingReview()
             tagPendingDeletionName != null -> tagPendingDeletionName = null
             isTagDeletionMode -> isTagDeletionMode = false
             showDeleteDialog -> {
@@ -147,6 +154,8 @@ fun LugravScreen(
 
     val savedMessage = stringResource(R.string.recording_saved)
     val errorMessage = stringResource(R.string.recording_error)
+    val discardedMessage = stringResource(R.string.recording_discarded)
+    val reviewErrorMessage = stringResource(R.string.recording_review_error)
     val permissionDeniedMessage = stringResource(R.string.permission_denied)
     val deleteErrorMessage = stringResource(R.string.delete_error)
     val renameSuccessMessage = stringResource(R.string.rename_success)
@@ -183,12 +192,22 @@ fun LugravScreen(
     }
 
     LaunchedEffect(recordingSuccess) {
-        recordingSuccess?.let { result ->
-            result.onSuccess {
-                snackbarHostState.showSnackbar(savedMessage)
-            }.onFailure {
-                snackbarHostState.showSnackbar(errorMessage)
+        recordingSuccess?.onFailure {
+            snackbarHostState.showSnackbar(errorMessage)
+        }
+    }
+
+    LaunchedEffect(recordingReviewResult) {
+        val result = recordingReviewResult ?: return@LaunchedEffect
+        viewModel.clearRecordingReviewResult()
+        result.onSuccess { outcome ->
+            val message = when (outcome) {
+                RecordingReviewOutcome.SAVED -> savedMessage
+                RecordingReviewOutcome.DISCARDED -> discardedMessage
             }
+            snackbarHostState.showSnackbar(message)
+        }.onFailure {
+            snackbarHostState.showSnackbar(reviewErrorMessage)
         }
     }
 
@@ -361,6 +380,21 @@ fun LugravScreen(
                     tagPendingDeletionName = null
                 }
             }
+        )
+    }
+
+    val reviewPath = recordingReviewPath
+    if (reviewPath != null) {
+        RecordingReviewDialog(
+            suggestedName = File(reviewPath).nameWithoutExtension,
+            tags = tags,
+            isLoadingTags = isLoadingTags,
+            isSaving = isRecordingReviewInProgress,
+            onSave = { name, tagNames ->
+                viewModel.saveRecordingReview(name, tagNames)
+            },
+            onDiscard = { viewModel.discardRecordingReview() },
+            onDismiss = { viewModel.keepRecordingReview() }
         )
     }
 

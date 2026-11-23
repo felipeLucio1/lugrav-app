@@ -17,8 +17,12 @@ object RecordingFileRules {
 
     fun isValidName(raw: String, currentName: String): Boolean {
         val name = normalizeName(raw)
+        return name != currentName && isValidRecordingName(raw)
+    }
+
+    fun isValidRecordingName(raw: String): Boolean {
+        val name = normalizeName(raw)
         return name.isNotBlank() &&
-            name != currentName &&
             name != "." &&
             name != ".." &&
             !name.startsWith(".") &&
