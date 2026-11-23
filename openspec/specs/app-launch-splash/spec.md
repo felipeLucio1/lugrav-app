@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define o splash oficial do Android e a sincronização entre o carregamento inicial das gravações e a exibição da interface principal.
+
+## Requirements
 
 ### Requirement: Official SplashScreen API
 The app SHALL use the official AndroidX SplashScreen compatibility library to display the launch splash screen.

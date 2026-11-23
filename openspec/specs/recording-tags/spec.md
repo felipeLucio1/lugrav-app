@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define o domínio, a persistência, as associações, os filtros e a sincronização entre tags e gravações.
+
+## Requirements
 
 ### Requirement: User tag domain model
 The system SHALL represent a user tag with a unique name and a color in `#RRGGBB` format.
@@ -158,3 +162,50 @@ The system SHALL reconcile the Room database with the `.aac` files on every reco
 #### Scenario: Tags survive synchronization
 - **WHEN** an existing recording is synchronized
 - **THEN** its tag associations SHALL be preserved
+
+### Requirement: Atomic tag deletion
+The system SHALL delete a tag and all of its recording associations in a single atomic database transaction.
+
+#### Scenario: Deleting an associated tag
+- **WHEN** a tag associated with one or more recordings is deleted
+- **THEN** the tag record is removed
+- **AND** all cross-reference rows for that tag are removed
+- **AND** the recordings remain stored and accessible without that tag
+
+#### Scenario: Transaction failure
+- **WHEN** an error occurs while deleting the tag or its associations
+- **THEN** the transaction is rolled back
+- **AND** neither the tag nor its associations are partially removed
+
+### Requirement: Tag deletion result
+The ViewModel SHALL report the normalized name of the deleted tag on success.
+
+#### Scenario: Successful deletion result
+- **WHEN** the ViewModel deletes a tag named `  Trabalho  `
+- **THEN** the deletion result is successful
+- **AND** the result contains the normalized name `Trabalho`
+- **AND** the active filter for that tag is cleared
+- **AND** tags and recordings are refreshed
+
+#### Scenario: Failed deletion result
+- **WHEN** the tag deletion operation fails
+- **THEN** the deletion result is a failure
+- **AND** the tag list and recording list are not updated as if the deletion succeeded
+
+### Requirement: Tags assigned during recording review
+O sistema SHALL permitir que as tags de uma nova gravação sejam definidas durante a revisão pós-gravação, substituindo o conjunto de associações da gravação pelas tags selecionadas.
+
+#### Scenario: Tags selecionadas na revisão
+- **WHEN** o usuário salva a revisão pós-gravação com tags selecionadas
+- **THEN** a gravação fica associada exatamente a essas tags
+- **AND** as associações anteriores da gravação são substituídas
+
+#### Scenario: Revisão sem tags
+- **WHEN** o usuário salva a revisão pós-gravação sem selecionar tags
+- **THEN** a gravação permanece sem associações de tags
+
+#### Scenario: Falha ao persistir tags
+- **WHEN** a persistência das tags selecionadas falha durante o salvamento da revisão
+- **THEN** o arquivo permanece com o nome anterior
+- **AND** as associações de tags anteriores são preservadas
+- **AND** uma mensagem de erro é apresentada

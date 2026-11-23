@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define os contratos unitários do ViewModel para gravação, reprodução, tags, filtros, seleção e resultados de operações.
+
+## Requirements
 
 ### Requirement: Test audio recording state
 The ViewModel SHALL set `isRecording` to true when `startRecording()` is called.
